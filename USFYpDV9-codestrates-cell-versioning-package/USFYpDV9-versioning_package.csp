@@ -1,0 +1,21 @@
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-properties"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json">{
+	"version": "0.1",
+	"icon": "bubble_chart",
+	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
+	"tags": [
+		"function",
+		"code paragraphs"
+	],
+	"assets": [
+	],
+	"dependencies": [
+	],
+	"changelog":
+	{
+		"0.1": "Initial version."
+	},
+	"github": {
+		"url": "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
+		"folder": "packages/USFYpDV9-codestrates-cell-versioning-package"
+	}
+}</pre></div></div>
