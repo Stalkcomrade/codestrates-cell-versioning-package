@@ -1,0 +1,256 @@
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-properties"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json">{
+	"version": "0.1",
+	"icon": "bubble_chart",
+	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
+	"tags": [
+		"function",
+		"code paragraphs"
+	],
+	"assets": [
+	],
+	"dependencies": [
+	],
+	"changelog":
+	{
+    "0.2": "Simple UI",
+		"0.1": "Initial version."
+	},
+	"github": {
+		"url": "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
+		"folder": "USFYpDV9-codestrates-cell-versioning-package"
+	}
+}</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackTiny = () =&gt; {
+    console.log("Back Tiny");
+};
+
+const toggleBackCardinal = () =&gt; {
+    console.log("Back Cardinal");
+};
+
+const toggleForwardTiny = () =&gt; {
+    console.log("Forward Tiny");
+};
+
+const toggleForwardCardinal = () =&gt; {
+    console.log("Forward Cardinal");
+};
+
+exports = Object.assign({toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success"><pre data-type="content" type="text/javascript" id="versioning-ui">
+const VersioningUtils = require("#versioning-utils")
+
+importLib([
+    "hammer.min.js",
+    "hammer-time.min.js"
+]).then(() =&gt; {
+
+    const ParagraphUtils = require("#paragraph-utils");
+
+    let addVersioningButton = (paragraph) =&gt; {
+
+	let header = ParagraphUtils.getHeaderElement(paragraph);
+
+	// Make sure to add action only once, e.g. triggered multiple times on paragraph drag and drop
+	if (header.querySelector(".action.toggle-versioning")) {
+	    return;
+	}
+
+        // Back tiny
+	let actionBackTiny = document.createElement("div");
+	actionBackTiny.classList.add("actionBackTiny");
+	actionBackTiny.classList.add("toggle-versioning-back-tiny");
+	actionBackTiny.setAttribute("tooltip", "true");
+	
+	let iconBackTiny = document.createElement("i");
+	iconBackTiny.classList.add("material-icons");
+	action.appendChild(iconBackTiny);
+	header.appendChild(actionBackTiny);
+
+        // Back cardinal
+	let actionBackCardinal = document.createElement("div");
+	actionBackCardinal.classList.add("actionBackCardinal");
+	actionBackCardinal.classList.add("toggle-versioning-back-cardinal");
+	actionBackCardinal.setAttribute("tooltip", "true");
+	
+	let iconBackCardinal = document.createElement("i");
+	iconBackCardinal.classList.add("material-icons");
+	actionBackCardinal.appendChild(iconBackCardinal);
+	header.appendChild(actionBackCardinal);
+
+        // Forward Tiny
+	let actionForwardTiny = document.createElement("div");
+	actionForwardTiny.classList.add("actionForwardTiny");
+	actionForwardTiny.classList.add("toggle-versioning-forward-tiny");
+	actionForwardTiny.setAttribute("tooltip", "true");
+	
+	let iconForwardTiny = document.createElement("i");
+	iconForwardTiny.classList.add("material-icons");
+	actionForwardTiny.appendChild(iconForwardTiny);
+	header.appendChild(actionForwardTiny);
+
+        // Forward cardinal
+	let actionForwardCardinal = document.createElement("div");
+	actionForwardCardinal.classList.add("actionForwardCardinal");
+	actionForwardCardinal.classList.add("toggle-versioning-forward-cardinal");
+	actionForwardCardinal.setAttribute("tooltip", "true");
+	
+	let iconForwardCardinal = document.createElement("i");
+	iconForwardCardinal.classList.add("material-icons");
+	actionForwardCardinal.appendChild(iconForwardCardinal);
+	header.appendChild(actionForwardCardinal);
+
+
+        [{action: actionBackTiny, desc: "actionBackTiny"}, {action: actionBackCardinal, desc: "actionBackCardinal"},
+         {action: actionForwardTiny, desc: "actionForwardTiny"}, {action: actionForwardCardinal, desc: "actionForwardCardinal"}].forEach(action =&gt; {
+
+	     var mc = new Hammer.Manager(action.action);
+	     mc.add(new Hammer.Tap({
+	         event: "tap_" + action.desc,
+	         taps: 1
+	     }));
+
+	     mc.add(new Hammer.Press({
+	         event: "longpress_" + action.desc,
+	         time: 250
+	     }));
+
+             mc.on("tap_" + action.action, () =&gt; {
+
+                 switch(action.desc) {
+                     
+                 case "actionBackTiny":
+                     VersioningUtils.toggleBackTiny(paragraph);
+                 case "actionBackCardinal":
+                     VersioningUtils.toggleBackCardinal(paragraph);
+                 case "actionForwardTiny":
+                     VersioningUtils.toggleForwardTiny(paragraph);
+                 case "actionForwardCardinal":
+                     VersioningUtils.toggleForwardCardinal(paragraph);
+                 }
+                 
+	     });
+
+         })
+	
+        
+    };
+
+    document.liveQuerySelectorAll(".paragraph").added(addVersioningButton);
+});
+
+/******************************************************************************/
+
+// TODO: exit versioning and return to the last state
+// Exit fullscreen when transient fullscreen paragraph was deleted
+// const selector = document.liveQuerySelectorAll('.paragraph.fullscreen');
+// selector.removed(FullscreenUtils.exitFullscreen);
+
+/******************************************************************/
+
+codestrate.addCommand("codestrates.cellVersioning", "Cell Versioning", (event) =&gt; {
+    let paragraph;
+    if (event !== null &amp;&amp; event.target !== null) {
+	let target = event.target;
+	    // paragraph = target.closest(".paragraph");
+        paragraph = target.closest(".paragraph");
+        } else {
+	    // paragraph = codestrate.focussedParagraph;
+	}
+	// if (!paragraph) {
+	// 	paragraph = document.querySelector(".paragraph.fullscreen:not([transient-fullscreen='false']),.paragraph[transient-fullscreen='true']");
+	// }
+
+	if (paragraph) {
+		// FullscreenUtils.togglePersistedFullscreen(paragraph);
+	}
+});
+
+codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
+
+
+</pre></div><div class="paragraph style-paragraph" data-id="wHtYFUqf" name="Versioning Indicator"><style data-type="content" type="text/css">#cellVersioning-indicator {
+	position: fixed;
+	right: 0;
+	top: 100px;
+	width: 30px;
+	height: 400px;
+	cursor: pointer;
+
+	color:  rgba(255, 255, 255, 0.2);
+	background: rgba(0, 0, 0, 0.2);
+	border-radius: 2px;
+	z-index: 201;
+}
+
+#cellVersioning-indicator:hover {
+	color: inherit;
+	background: rgba(0, 0, 0, 0.3);
+}
+
+#cellVersioning-indicator:before {
+	padding-left: 7px;
+	padding-bottom: 7px;
+	content: attr(icon);
+	position: relative;
+	display: inline-block;
+	transform: rotate(90deg) translate3d(0, -100%, 0);
+	transform-origin: 0 0 0;
+
+	font-family: "Material Icons";
+	font-weight: normal;
+	font-style: normal;
+	/* font-size: 24px; */
+	display: inline-block;
+	line-height: 1;
+	text-transform: none;
+	letter-spacing: normal;
+	word-wrap: normal;
+	white-space: nowrap;
+	direction: ltr;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+	-moz-osx-font-smoothing: grayscale;
+	font-feature-settings: "liga";
+}
+
+#cellVersioning-indicator:after {
+	padding: 5px;
+	padding-left: 10px;
+	content: attr(name);
+	display: inline-block;
+	width: 200px;
+	position: relative;
+	transform: rotate(90deg) translate3d(0, -100%, 0);
+	transform-origin: 0 0 0;
+}
+
+#cellVersioning-indicator:not([name]):after {
+	content: "No Name";
+}
+
+#cellVersioning-indicator.hidden {
+	display: none;
+}</style></div><div class="paragraph style-paragraph" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
+html .paragraph .toggle-versioning-back-cardinal,
+html .paragraph .toggle-versioning-forward-tiny, 
+html .paragraph .toggle-versioning-forward-cardinal {
+    margin-left: 5px;
+    margin-right: 10px;
+}
+
+
+html .paragraph .toggle-versioning-back-tiny i:after {
+	content: "keyboard_arrow_left";
+}
+
+html .paragraph .toggle-versioning-back-cardinal i:after {
+	content: "fast_rewind";
+}
+
+html .paragraph .toggle-versioning-forward-tiny i:after {
+	content: "keyboard_arrow_right";
+}
+
+html .paragraph .toggle-versioning-forward-cardinal i:after {
+	content: "fast_forward";
+}
+</style></div></div>
