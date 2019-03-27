@@ -1,5 +1,5 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-properties"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json">{
-	"version": "0.1",
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+	"version": "0.2.5",
 	"icon": "bubble_chart",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags": [
@@ -12,30 +12,28 @@
 	],
 	"changelog":
 	{
-    "0.2": "Simple UI",
-		"0.1": "Initial version."
+    "0.2.5": "Updated UI, tested where it is actionable",
+    "0.2"  : "Simple UI",
+		"0.1"  : "Initial version."
 	},
 	"github": {
 		"url": "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
-		"folder": "USFYpDV9-codestrates-cell-versioning-package"
+		"folder": "/packages/USFYpDV9-codestrates-cell-versioning-package"
 	}
-}</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackTiny = () =&gt; {
+}</pre></div><div class="paragraph code-paragraph" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI"> </pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils"> </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackTiny = (paragraph) =&gt; {
     console.log("Back Tiny");
-};
-
-const toggleBackCardinal = () =&gt; {
+}
+const toggleBackCardinal = (paragraph) =&gt; {
     console.log("Back Cardinal");
-};
-
-const toggleForwardTiny = () =&gt; {
+}
+const toggleForwardTiny = (paragraph) =&gt; {
     console.log("Forward Tiny");
-};
-
-const toggleForwardCardinal = () =&gt; {
+}
+const toggleForwardCardinal = (paragraph) =&gt; {
     console.log("Forward Cardinal");
 };
 
-exports = Object.assign({toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success"><pre data-type="content" type="text/javascript" id="versioning-ui">
+exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils")
 
 importLib([
@@ -50,24 +48,24 @@ importLib([
 	let header = ParagraphUtils.getHeaderElement(paragraph);
 
 	// Make sure to add action only once, e.g. triggered multiple times on paragraph drag and drop
-	if (header.querySelector(".action.toggle-versioning")) {
+	if (header.querySelector(".toggle-versioning-back-tiny")) {
 	    return;
 	}
 
         // Back tiny
 	let actionBackTiny = document.createElement("div");
-	actionBackTiny.classList.add("actionBackTiny");
+	actionBackTiny.classList.add("action");
 	actionBackTiny.classList.add("toggle-versioning-back-tiny");
 	actionBackTiny.setAttribute("tooltip", "true");
 	
 	let iconBackTiny = document.createElement("i");
 	iconBackTiny.classList.add("material-icons");
-	action.appendChild(iconBackTiny);
+	actionBackTiny.appendChild(iconBackTiny);
 	header.appendChild(actionBackTiny);
 
         // Back cardinal
 	let actionBackCardinal = document.createElement("div");
-	actionBackCardinal.classList.add("actionBackCardinal");
+	actionBackCardinal.classList.add("action");
 	actionBackCardinal.classList.add("toggle-versioning-back-cardinal");
 	actionBackCardinal.setAttribute("tooltip", "true");
 	
@@ -78,7 +76,7 @@ importLib([
 
         // Forward Tiny
 	let actionForwardTiny = document.createElement("div");
-	actionForwardTiny.classList.add("actionForwardTiny");
+	actionForwardTiny.classList.add("action");
 	actionForwardTiny.classList.add("toggle-versioning-forward-tiny");
 	actionForwardTiny.setAttribute("tooltip", "true");
 	
@@ -89,7 +87,7 @@ importLib([
 
         // Forward cardinal
 	let actionForwardCardinal = document.createElement("div");
-	actionForwardCardinal.classList.add("actionForwardCardinal");
+	actionForwardCardinal.classList.add("action");
 	actionForwardCardinal.classList.add("toggle-versioning-forward-cardinal");
 	actionForwardCardinal.setAttribute("tooltip", "true");
 	
@@ -102,35 +100,42 @@ importLib([
         [{action: actionBackTiny, desc: "actionBackTiny"}, {action: actionBackCardinal, desc: "actionBackCardinal"},
          {action: actionForwardTiny, desc: "actionForwardTiny"}, {action: actionForwardCardinal, desc: "actionForwardCardinal"}].forEach(action =&gt; {
 
-	     var mc = new Hammer.Manager(action.action);
+
+             var mc = new Hammer.Manager(action.action);
+             
 	     mc.add(new Hammer.Tap({
-	         event: "tap_" + action.desc,
+	         event: "tap",
 	         taps: 1
 	     }));
 
 	     mc.add(new Hammer.Press({
-	         event: "longpress_" + action.desc,
+	         event: "longpress",
 	         time: 250
 	     }));
+             
+             switch(action.desc) {
 
-             mc.on("tap_" + action.action, () =&gt; {
-
-                 switch(action.desc) {
-                     
-                 case "actionBackTiny":
-                     VersioningUtils.toggleBackTiny(paragraph);
-                 case "actionBackCardinal":
+             case "actionBackTiny":
+                 return  mc.on("tap", () =&gt; {
+                     console.log("!")
+          	     VersioningUtils.toggleBackTiny(paragraph);                 
+	         });
+             case "actionBackCardinal":
+                 return   mc.on("tap", () =&gt; {
                      VersioningUtils.toggleBackCardinal(paragraph);
-                 case "actionForwardTiny":
+	         });
+             case "actionForwardTiny":
+                 return  mc.on("tap", () =&gt; {
                      VersioningUtils.toggleForwardTiny(paragraph);
-                 case "actionForwardCardinal":
+	         });
+             case "actionForwardCardinal":
+                 return   mc.on("tap", () =&gt; {
                      VersioningUtils.toggleForwardCardinal(paragraph);
-                 }
-                 
-	     });
-
+	         });
+             }
+             
+             
          })
-	
         
     };
 
@@ -147,21 +152,23 @@ importLib([
 /******************************************************************/
 
 codestrate.addCommand("codestrates.cellVersioning", "Cell Versioning", (event) =&gt; {
+    
+    console.log(event)
+    
     let paragraph;
     if (event !== null &amp;&amp; event.target !== null) {
 	let target = event.target;
-	    // paragraph = target.closest(".paragraph");
         paragraph = target.closest(".paragraph");
-        } else {
-	    // paragraph = codestrate.focussedParagraph;
-	}
-	// if (!paragraph) {
-	// 	paragraph = document.querySelector(".paragraph.fullscreen:not([transient-fullscreen='false']),.paragraph[transient-fullscreen='true']");
-	// }
+    } else {
+	// paragraph = codestrate.focussedParagraph;
+    }
+    // if (!paragraph) {
+    // 	paragraph = document.querySelector(".paragraph.fullscreen:not([transient-fullscreen='false']),.paragraph[transient-fullscreen='true']");
+    // }
 
-	if (paragraph) {
-		// FullscreenUtils.togglePersistedFullscreen(paragraph);
-	}
+    if (paragraph) {
+	// FullscreenUtils.togglePersistedFullscreen(paragraph);
+    }
 });
 
 codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
