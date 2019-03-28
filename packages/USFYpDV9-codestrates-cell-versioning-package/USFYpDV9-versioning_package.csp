@@ -2192,221 +2192,224 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 // module.exports = coreOpApplier;
 
 //////////////////////////////////////
-</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils"> 
+</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
+// TODO: different contributors
+// TODO: patching diff
+// TODO: output
+// TODO: vistrate
+// TODO: get current element name
+
+
 const ParagraphUtils = require("#paragraph-utils");
 const HelperFunctions = require("#helperFunctions")
 
-
-// recursively search for PathNodes of the code cell
-
-let target,
-    codeCell;
-
-target = [];
-
-// TODO: last-execution-state
-// TODO: different contributors
-// TODO: patching diff
-
-// TODO: output
-
-// TODO: vistrate
-
-// TODO: get current element name
-// document.getElementsByName("idVersionNew")[0].__pathNodes[0].children[0].DOMNode
-
-
-// TODO: change scope of variables
-const recOps = function(el) {
-
-    var element;    
-    if (Array.isArray(el)) { // INFO: for the nested elements
+// receive array of ops from last til user-defined version
+// input argument controls the range of received ops
+// so, currentVersion - inputVersion
+const getOps = (version) =&gt; {
+  
+var tsd;
+webstrate.getOps(webstrate.version - version, webstrate.version, (x,y) =&gt; {
+		tsd = y;
+});
+ 
+  return new Promise((resolve, reject) =&gt; {
+   
+    const interval = setInterval(() =&gt; {
         
-        el.forEach(elNest =&gt; {
-
-            element = {
-                id: elNest.id,
-                path: elNest.toPath()
-            }
-            
-            target.push(element)
-            
-            if (elNest.children) {
-                recOps(elNest.children)
-            }        
-        })
-    } else { // INFO: for the head element
-
-        element = {
-            id: el.id,
-            path: el.toPath()
+        if (!Array.isArray(tsd)) {
+         	 console.log("Not Yet Resolved")
+        } else {
+          	clearInterval(interval)
+          	resolve(tsd)
+         	  console.log("Resolved")
         }
-        
-        // target.push(element)
-        
-        if (el.children) {
-            recOps(el.children)
-        }
+    }, 1000);
+    
+   
+});
+  
+};
 
-    }
-
-    return target
+// helper function to create containers for elements
+const recOps = (el) =&gt; {
+  
+  var target = {
+ 			 id: el.id, path: el.toPath()
+}
+  
+  return target;
+  
 }
 
 
+// taking target PathTree + ops to process
+const findRelevantPiecesInOps = async (target, ops) =&gt; {
+    
+   let ind,
+	 		 tmpArray;
+    var targetTmp,
+        opContainer;
 
-// finding relevant pieces in getOps
-
-// INFO: finding right nodes by the path
-// FIXME: not optimal
-// FIXME: receive ops before that
-
-const findRelevantPiecesInOps = (target) =&gt; {
+    ind = [];
+    tmpArray = await ops;
   
-  let ind,
-	tmpArray;
-var targetTmp,
-    opContainer;
 
-ind = []
-tmpArray = [...temp14]
+    targetTmp = await [target]; // SOLVED: filter target to be unique
+    targetTmp.forEach(cellLine =&gt; { // INFO: for each path of the cell line
 
-targetTmp = [target[2]] // FIXME: filter target to be unique
-target.forEach(cellLine =&gt; { // INFO: for each path of the cell line
+      // console.log("Celline",cellLine)
+        // cellLine.path
+        tmpArray.forEach(el =&gt; { // INFO: for each version
+            
+            (el.op !== undefined) &amp;&amp; el.op.forEach(op =&gt; { // INFO: for each op
 
-    // cellLine.path
-    tmpArray.forEach(el =&gt; { // INFO: for each version
-        
-        (el.op !== undefined) &amp;&amp; el.op.forEach(op =&gt; { // INFO: for each op
+                // debugger;
+              // there are ops with path not possible to obtain
+              // that is why we simply slice the last elements
+                if (cellLine.path.length &lt; op.p.length) {
+                    
+                    opContainer = [...op.p]
+                    opContainerBeforeMutation = [...op.p]
+                    opContainer.pop()
+                    
+                  // HelperFunctions.compareArrays(opContainer, cellLine.path) &amp;&amp;
+                  //  console.log("Desired Op is Finded!")
+                    
+                    HelperFunctions.compareArrays(opContainer, cellLine.path)
+                        &amp;&amp; ind.push({
+                            path: opContainerBeforeMutation,
+                            version: el.v,
+                            change: HelperFunctions.FilterObjectByKey(op, "p") // filtering path
+                    })    
+                } else {
 
-               
-            if (cellLine.path.length &lt; op.p.length) {
-                
-                opContainer = [...op.p]
-                opContainerBeforeMutation = [...op.p]
-                opContainer.pop()
-                
-                
-                
-                (opContainer, cellLine.path)
-                    &amp;&amp; ind.push({
-                        path: opContainerBeforeMutation,
-                        version: el.v,
-                        change: 
                   
+                  // HelperFunctions.compareArrays(opContainer, cellLine.path) &amp;&amp; 
+                  //   console.log("TRUE, Op path: ", 
+                   //              opContainer, "Target Path: ", 
+                  //               cellLine.path,  "\n version: ", el.v)
                   
-                  (op, "p")})    
-            } else {
-
-                opContainer = [...op.p]
-                compareArrays(opContainer, cellLine.path)
-                    &amp;&amp; ind.push({
-                        path: opContainer,
-                        version: el.v,
-                        change: FilterObjectByKey(op, "p")})
-                // compareArrays(opContainer, cellLine.path) &amp;&amp; console.log("TRUE, Op path: ", opContainer, "Target Path: ", cellLine.path,  "\n version: ", el.v)
+                    opContainer = [...op.p]
+                    HelperFunctions.compareArrays(opContainer, cellLine.path)
+                        &amp;&amp; ind.push({
+                            path: opContainer,
+                            version: el.v,
+                            change: HelperFunctions.FilterObjectByKey(op, "p")}) // filtering path
+                    
+                }
                 
-            }
+            })
             
         })
-        
+
     })
 
-})
-
-  
-  return ind
-  
+    return ind
+    
 }
 
 
-const sortNclear = (ind) =&gt; {
+// legacy fun
+// sort ops by version and remove duplicates
+const sortNclear = async (ind) =&gt; {
 
-  ind.sort(HelperFunctions.compareSort)
+  // debugger;
+  var indLocal = await ind;
+  indLocal.sort(HelperFunctions.compareSort)
 
-// INFO: delete duplicates (why the hell?)
+    // INFO: delete duplicates (legacy)
 
-// delete duplicates based on:
-// arrays (paths)
-// version numbers
-var indClear = ind.reduce((acc, value) =&gt; {
+    var indClear = indLocal.reduce((acc, value) =&gt; {
 
-    if (acc.length &gt; 0) {  // INFO: after second call I can compare
-        // SOLVED: first two duplicates are not removed
+        if (acc.length &gt; 0) {  // INFO: after second call I can compare
+            // SOLVED: first two duplicates are not removed
+            
+            if (acc[acc.length - 1].version === value.version // INFO: comparing current with previous
+                &amp;&amp; compare(acc[acc.length - 1].path, value.path)) { // INFO: if previous is the same
+                // INFO: not pushing duplicates
+            } else { acc.push(value) }; // INFO: push unique (legacy)
+            
+        } else { acc.push(value) }; // INFO: if it is first call, just push (legacy)
+      
+        return acc
         
-        if (acc[acc.length - 1].version === value.version // INFO: comparing current with previous
-            &amp;&amp; compare(acc[acc.length - 1].path, value.path)) { // INFO: if previous is the same
-            // INFO: not pushing duplicates
-        } else { // INFO: push unique
-	    acc.push(value) // FIXME:
-        }
-        
-    } else {
-
-        // INFO: if it is first call, just push
-        acc.push(value) // FIXME:
-    }
+    }, [])
     
-    return acc
-    
-}, [])
-  
-  
-}
-
-
-// FIXME: use paragraph
-const processOpsAndApply = (paragraph) =&gt; {
-    
-    var rootTmp = document.getElementsByName("idVersionNew")[0].__pathNodes[0].children[0].DOMNode
-    var temp14;
-
-    webstrate.getOps(webstrate.version - 1, webstrate.version, (x, y) =&gt; {temp14 = y})
-    var opInst = [...temp14];
-    var opTry = opInst[opInst.length - 1].op[0]
-
-    opTry.p = opTry.p.splice(-2)
-
-    setTimeout(() =&gt; {
-        coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
-    }, 1000)
     
 }
 
 
-const processOpsAndApplyMultiple = (paragraph) =&gt; {
-  
-  opInst.forEach(el =&gt; {
+// apply only 1 operational transformation
+// TODO: made modes, aka last successfull, last error, contributor-basis
+const processOpsAndApply = async (paragraph, ops) =&gt; {
+    
+  var rootTmp = paragraph
+  // var rootTmp = document.getElementsByName(paragraph)
+    // var rootTmp = document.getElementsByName(paragraph) // "idVersionNew")[0].__pathNodes[0].children[0].DOMNode
+    
+    var opInst = await ops;
+    console.log(opInst)
+    var opTry = opInst[opInst.length - 1].change
+		console.log(opTry)
+    // opTry.p = opTry.p.splice(-2)
 
-    el.op.forEach(op =&gt; {
-        op.p = [op.p.pop()]
-        applyOp(op, rootTmp)
+  // FIXME: main issue is that I need real ops, not helper objects I created
+  
+    console.log(opTry.p)
+    // setTimeout(() =&gt; {
+      //  coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+   // }, 1000)
+    
+}
+
+
+// apply several (how to define the proper edge) operational transformation
+// TODO: made modes, aka last successfull, last error, contributor-basis
+const processOpsAndApplyMultiple = async (paragraph) =&gt; {
+    
+    opInst.forEach(el =&gt; {
+
+        el.op.forEach(op =&gt; {
+            op.p = [op.p.pop()]
+            applyOp(op, rootTmp)
+        })
+
     })
 
-})
-
 }
 
 
 
 
-exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, 
+exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps, 
                                   sortNclear, 
-                                  processOpsAndApply, processOpsAndApply, processOpsAndApplyMultiple})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg"><pre data-type="content" type="text/javascript">// JavaScript code here
+                                  processOpsAndApply, processOpsAndApplyMultiple})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
 
-const opsUtils = require("#opsUtils")
+// var target = opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0])
+// console.log(target)
+// opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0]).then(dt =&gt; console.log(dt))
 
-var target = opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[2].__pathNodes[0])
+var target = opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0])
+console.log(target)
 
+var ops = opsUtils.getOps(1000).then((dt) =&gt; {return dt})
+console.log("All Ops", ops)
 
-var ind = opsUtils.findRelevantPiecesInOps(target)
+var ind = opsUtils.findRelevantPiecesInOps(target, ops)
+console.log("Relevant Ops", ind)
+ 
+// FIXME: sorting
+var acc = opsUtils.sortNclear(ind)
+console.log("Sorting and Duplicates Removal", acc)
 
+var paragraph = document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0]
 
-var acc = opsUtils.sortNClear(ind)
-opsUtils.processOpsAndApply()
+var acc = ind
+opsUtils.processOpsAndApply(paragraph, acc)
 // OR
 // opsUtils.processOpsAndApply
-</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackContributor = (paragraph) =&gt; {
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
 }
 
@@ -2446,7 +2449,7 @@ const toggleForwardCardinal = (paragraph) =&gt; {
     console.log(paragraph)
 };
 
-exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
+exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
 
 importLib([
