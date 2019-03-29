@@ -1,6 +1,6 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
 	"version"    : "0.3.4",
-	"icon"       : "bubble_chart",
+	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
 		              "function",
@@ -2230,7 +2230,10 @@ webstrate.getOps(webstrate.version - version, webstrate.version, (x,y) =&gt; {
 };
 
 // helper function to create containers for elements
-const recOps = (el) =&gt; {
+const recOps = (paragraph) =&gt; {
+  
+  var el = paragraph.children[1].__pathNodes[0].children[0]
+  // var el = document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0]
   
   var target = {
  			 id: el.id, path: el.toPath()
@@ -2343,8 +2346,10 @@ const sortNclear = async (ind) =&gt; {
 // apply only 1 operational transformation
 // TODO: made modes, aka last successfull, last error, contributor-basis
 const processOpsAndApply = async (paragraph, ops) =&gt; {
-    
-  var rootTmp = paragraph   
+  
+  // var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
+  
+  var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode   
   var opInst = await ops;
   
   var opTry = opInst[opInst.length - 1].realOp
@@ -2361,7 +2366,7 @@ const processOpsAndApply = async (paragraph, ops) =&gt; {
 // TODO: made modes, aka last successfull, last error, contributor-basis
 const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
     
-   var rootTmp = paragraph;
+   var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode;
    var opInst = await ops;
    
   for (var i = opInst.length - 1; i &gt; opInst.length - opsQuantity - 1; i--) {
@@ -2381,13 +2386,14 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
 const updateEditor = async (paragraph) =&gt; {
   
 setTimeout(() =&gt; {
+
+paragraph.children[2].children[0].remove()
   
-  
-document.getElementsByName(paragraph)[0].children[2].children[0].remove()
+// document.getElementsByName(paragraph)[0].children[2].children[0].remove()
   
 codestrate.editors.CodeMirror
-  .factory.create(document.getElementsByName(paragraph)[0].children[2],
-                  document.getElementById(paragraph))
+  .factory.create(paragraph.children[2],
+                  paragraph)
  
   
 }, 1500)
@@ -2395,33 +2401,72 @@ codestrate.editors.CodeMirror
 }
 
 
+const mainWrapper = (paragraph) =&gt; {
+
+  var target = recOps(paragraph)
+	console.log(target)
+
+	var ops = getOps(1000).then((dt) =&gt; {return dt})
+	console.log("All Ops", ops)
+
+	var ind = findRelevantPiecesInOps(target, ops)
+	console.log("Relevant Ops", ind)
+ 
+	// FIXME: sorting
+	var acc = sortNclear(ind)
+	console.log("Sorting and Duplicates Removal", acc)
+
+	// var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
+
+	var acc = ind
+  processOpsAndApply(paragraph, acc)
+	// OR
+	// opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
+
+	updateEditor(paragraph)
+
+  
+}
+
 exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps, 
                                   sortNclear, 
                                   processOpsAndApply, processOpsAndApplyMultiple,
-                                  updateEditor})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
+                                  updateEditor,
+                                  mainWrapper})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
 
-var target = opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0])
-console.log(target)
 
-var ops = opsUtils.getOps(1000).then((dt) =&gt; {return dt})
-console.log("All Ops", ops)
+const mainWrapper = (paragraph) =&gt; {
 
-var ind = opsUtils.findRelevantPiecesInOps(target, ops)
-console.log("Relevant Ops", ind)
+  var target = opsUtils.recOps(paragraph)
+	console.log(target)
+
+	var ops = opsUtils.getOps(1000).then((dt) =&gt; {return dt})
+	console.log("All Ops", ops)
+
+	var ind = opsUtils.findRelevantPiecesInOps(target, ops)
+	console.log("Relevant Ops", ind)
  
-// FIXME: sorting
-var acc = opsUtils.sortNclear(ind)
-console.log("Sorting and Duplicates Removal", acc)
+	// FIXME: sorting
+	var acc = opsUtils.sortNclear(ind)
+	console.log("Sorting and Duplicates Removal", acc)
 
-var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
+	// var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
 
-var acc = ind
-// opsUtils.processOpsAndApply(paragraph, acc)
-// OR
-opsUtils.processOpsAndApplyMultiple(paragraph, acc, 100)
+	var acc = ind
+  opsUtils.processOpsAndApply(paragraph, acc)
+	// OR
+	// opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
 
-opsUtils.updateEditor("idVersion2")
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackContributor = (paragraph) =&gt; {
+	opsUtils.updateEditor(paragraph)
+
+  
+}
+
+var paragraph = document.getElementsByName("idVersion2")[0]
+mainWrapper(paragraph)
+</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
+
+const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
 }
 
@@ -2447,6 +2492,7 @@ const toggleForwardSuccess = (paragraph) =&gt; {
 const toggleBackTiny = (paragraph) =&gt; {
     console.log("Back Tiny");
     console.log(paragraph)
+  	opsUtils.mainWrapper(paragraph)
 }
 const toggleBackCardinal = (paragraph) =&gt; {
     console.log("Back Cardinal");
@@ -2523,6 +2569,18 @@ importLib([
 	iconForwardCardinal.classList.add("material-icons");
 	actionForwardCardinal.appendChild(iconForwardCardinal);
 	header.appendChild(actionForwardCardinal);
+      
+      
+  // indicator that mode that versioning mode is enabled 
+  let versioningMode = document.createElement("div");
+	// versioningMode.classList.add("action");
+	versioningMode.classList.add("toggle-versioning-mode");
+	versioningMode.setAttribute("tooltip", "true");
+	
+	let iconVersioningMode = document.createElement("i");
+	iconVersioningMode.classList.add("material-icons");
+	versioningMode.appendChild(iconVersioningMode);
+	header.appendChild(versioningMode);
 
 
         [{action: actionBackTiny, desc: "actionBackTiny"}, {action: actionBackCardinal, desc: "actionBackCardinal"},
@@ -2682,25 +2740,29 @@ codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
 }</style></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
 html .paragraph .toggle-versioning-back-cardinal,
 html .paragraph .toggle-versioning-forward-tiny, 
-html .paragraph .toggle-versioning-forward-cardinal {
+html .paragraph .toggle-versioning-forward-cardinal,
+html .paragraph .toggle-versioning-mode {
     margin-left: 5px;
     margin-right: 10px;
 }
 
+html .paragraph .toggle-versioning-mode i:after {
+	content: "change_history";
+}
 
 html .paragraph .toggle-versioning-back-tiny i:after {
-	content: "keyboard_arrow_left";
-}
-
-html .paragraph .toggle-versioning-back-cardinal i:after {
-	content: "fast_rewind";
-}
-
-html .paragraph .toggle-versioning-forward-tiny i:after {
 	content: "keyboard_arrow_right";
 }
 
-html .paragraph .toggle-versioning-forward-cardinal i:after {
+html .paragraph .toggle-versioning-back-cardinal i:after {
 	content: "fast_forward";
+}
+
+html .paragraph .toggle-versioning-forward-tiny i:after {
+	content: "keyboard_arrow_left";
+}
+
+html .paragraph .toggle-versioning-forward-cardinal i:after {
+	content: "fast_rewind";
 }
 </style></div></div>
