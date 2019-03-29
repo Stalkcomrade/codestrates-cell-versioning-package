@@ -23,7 +23,7 @@
 		"url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
 		"folder": "packages/USFYpDV9-codestrates-cell-versioning-package"
 	}
-}</pre></div><div class="paragraph code-paragraph" data-id="zRmB9PSK" last-execution-state="success" name="helperFunctions"><pre data-type="content" type="text/javascript" id="helperFunctions">const compareArrays = (array1, array2) =&gt; {
+}</pre></div><div class="paragraph code-paragraph collapsed" data-id="zRmB9PSK" last-execution-state="success" name="helperFunctions"><pre data-type="content" type="text/javascript" id="helperFunctions">const compareArrays = (array1, array2) =&gt; {
     return array1.length === array2.length &amp;&amp; array1.every((value, index) =&gt; value === array2[index])
 }
 
@@ -54,7 +54,7 @@ const compareSort = (a, b) =&gt; {
     return comparison;
 }
 
-exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort})</pre></div><div class="paragraph code-paragraph" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI"> 
+exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI"> 
 // coreEvents
 const coreEventsModule = {};
 
@@ -830,28 +830,6 @@ PathTree.elementAtPath = function(parentElement, path) {
 	}
 	return PathTree.elementAtPath(childPathNode, path.slice(1));
 };
-
-////////////////////////
-
-// console.log(PathTree.elementAtPath(document.getElementsByName("idVersion")[0].__pathNodes[0].children[0].children[0].toPath(), [1,37]))
-
-// console.log(PathTree.elementAtPath(document.body, [3,5,33,2,2,2,37]))
-
-
-///////////////////////
-
-// console.log(PathTree.getPathNode(document.getElementById("coreMutation"), document.body))
-// console.log(PathTree.elementAtPath(document.children[0].__pathNodes[0].DOMNode, [1, 5, 33, 2, 2, 2, 37]))
-// console.log(PathTree.elementAtPath(document.children[0].__pathNodes[0].DOMNode, [1, 5, 33, 2, 2, 2, 37]))
-// console.log(PathTree.getPathNode(document.getElementsByName("coreMutation")[0]))
-
-// console.log(PathTree.getPathNode(document.getElementsByName("idVersion")[0].children[1].__pathNodes[0].children[0].DOMNode))
-// console.log(PathTree.getPathNode(document.getElementById("idVersion"), document.body).toPath());
-
-// console.log(document.getElementsByName("coreMutation")[0].__pathNodes[0].toPath());
-// console.log(document.getElementsByName("idVersion")[0].__pathNodes[0].toPath());
-
-// module.exports = PathTree;
 
 ////////////////////////////////////////////////////
 
@@ -2189,7 +2167,7 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 
 
 exports = Object.assign(exports, {coreEventsModule})
-</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
 // TODO: different contributors
 // TODO: patching diff
 // TODO: output
@@ -2467,7 +2445,7 @@ const mainWrapper = (paragraph) =&gt; {
 
 var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
-</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
+</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
 
 const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
@@ -2510,7 +2488,7 @@ const toggleForwardCardinal = (paragraph) =&gt; {
     console.log(paragraph)
 };
 
-exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
+exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
 
 importLib([
@@ -2635,6 +2613,8 @@ importLib([
 
         const header = ParagraphUtils.getHeaderElement(paragraph);
         const content = ParagraphUtils.getContentElement(paragraph);
+      	console.log("header", header)
+      	console.log("content", content)
 
         addVersioningButton(paragraph)
     });
