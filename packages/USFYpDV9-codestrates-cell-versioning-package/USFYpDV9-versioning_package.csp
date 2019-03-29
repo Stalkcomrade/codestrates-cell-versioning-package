@@ -1,5 +1,5 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.3.2",
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+	"version"    : "0.3.4",
 	"icon"       : "bubble_chart",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,6 +12,7 @@
 	],
 	"changelog":
 	{
+    "0.3.4" : "combining all into a pipeline",
     "0.3.2" : "versioning UI only for code chunks, refactoring opsUtils into proper functions",
     "0.3"   : "added coreWebstrateClient API by Kristian Antonsen + helper utils for ops processing",
     "0.2.5" : "Updated UI, tested where it is actionable",
@@ -2174,9 +2175,7 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 	// operations would cause new mutations to be created, which in turn would cause the
 	// creation of new operations, leading to a livelock for all clients.
 	coreMutation.pause();
-        //        debugger;
-
-        var op = ops
+   var op = ops
 	// ops.forEach((op) =&gt; {
 	applyOpReverse(op, rootElement);
         // applyOp()
@@ -2188,10 +2187,8 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 // };
 
 
-// coreEventsModule.triggerEvent("receivedOpsStlk", rootElement, ops)
-// module.exports = coreOpApplier;
 
-//////////////////////////////////////
+exports = Object.assign(exports, {coreEventsModule})
 </pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
 // TODO: different contributors
 // TODO: patching diff
@@ -2201,7 +2198,8 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 
 
 const ParagraphUtils = require("#paragraph-utils");
-const HelperFunctions = require("#helperFunctions")
+const HelperFunctions = require("#helperFunctions");
+const coreWsClientModule = require("#coreWebstratesClientAPI");
 
 // receive array of ops from last til user-defined version
 // input argument controls the range of received ops
@@ -2278,6 +2276,7 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
                     
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
+                      			realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
                             change: HelperFunctions.FilterObjectByKey(op, "p") // filtering path
@@ -2293,6 +2292,7 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
                     opContainer = [...op.p]
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
+                      			ealOp: op,
                             path: opContainer,
                             version: el.v,
                             change: HelperFunctions.FilterObjectByKey(op, "p")}) // filtering path
@@ -2344,51 +2344,61 @@ const sortNclear = async (ind) =&gt; {
 // TODO: made modes, aka last successfull, last error, contributor-basis
 const processOpsAndApply = async (paragraph, ops) =&gt; {
     
-  var rootTmp = paragraph
-  // var rootTmp = document.getElementsByName(paragraph)
-    // var rootTmp = document.getElementsByName(paragraph) // "idVersionNew")[0].__pathNodes[0].children[0].DOMNode
-    
-    var opInst = await ops;
-    console.log(opInst)
-    var opTry = opInst[opInst.length - 1].change
-		console.log(opTry)
-    // opTry.p = opTry.p.splice(-2)
-
-  // FIXME: main issue is that I need real ops, not helper objects I created
+  var rootTmp = paragraph   
+  var opInst = await ops;
   
-    console.log(opTry.p)
-    // setTimeout(() =&gt; {
-      //  coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
-   // }, 1000)
+  var opTry = opInst[opInst.length - 1].realOp
+  opTry.p = opTry.p.splice(-2)
+
+  // SOLVED: main issue is that I need real ops, not helper objects I created
+  coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
     
 }
 
 
 // apply several (how to define the proper edge) operational transformation
+// number of ops to apply sequentilly 
 // TODO: made modes, aka last successfull, last error, contributor-basis
-const processOpsAndApplyMultiple = async (paragraph) =&gt; {
+const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
     
-    opInst.forEach(el =&gt; {
-
-        el.op.forEach(op =&gt; {
-            op.p = [op.p.pop()]
-            applyOp(op, rootTmp)
-        })
-
-    })
-
+   var rootTmp = paragraph;
+   var opInst = await ops;
+   
+  for (var i = opInst.length - 1; i &gt; opInst.length - opsQuantity - 1; i--) {
+    
+   		var opTry = opInst[i].realOp
+      opTry.p = opTry.p.splice(-2)
+      
+      coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+             
+}
 }
 
 
 
+// update mirror editor
+// FIXME: currently id of a paraph as input
+const updateEditor = async (paragraph) =&gt; {
+  
+setTimeout(() =&gt; {
+  
+  
+document.getElementsByName(paragraph)[0].children[2].children[0].remove()
+  
+codestrate.editors.CodeMirror
+  .factory.create(document.getElementsByName(paragraph)[0].children[2],
+                  document.getElementById(paragraph))
+ 
+  
+}, 1500)
+    
+}
+
 
 exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps, 
                                   sortNclear, 
-                                  processOpsAndApply, processOpsAndApplyMultiple})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
-
-// var target = opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0])
-// console.log(target)
-// opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0]).then(dt =&gt; console.log(dt))
+                                  processOpsAndApply, processOpsAndApplyMultiple,
+                                  updateEditor})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
 
 var target = opsUtils.recOps(document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0])
 console.log(target)
@@ -2403,12 +2413,14 @@ console.log("Relevant Ops", ind)
 var acc = opsUtils.sortNclear(ind)
 console.log("Sorting and Duplicates Removal", acc)
 
-var paragraph = document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0]
+var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
 
 var acc = ind
-opsUtils.processOpsAndApply(paragraph, acc)
+// opsUtils.processOpsAndApply(paragraph, acc)
 // OR
-// opsUtils.processOpsAndApply
+opsUtils.processOpsAndApplyMultiple(paragraph, acc, 100)
+
+opsUtils.updateEditor("idVersion2")
 </pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
 }
