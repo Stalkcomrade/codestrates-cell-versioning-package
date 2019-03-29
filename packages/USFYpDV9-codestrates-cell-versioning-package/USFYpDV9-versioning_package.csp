@@ -54,7 +54,7 @@ const compareSort = (a, b) =&gt; {
     return comparison;
 }
 
-exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI"> 
+exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort})</pre></div><div class="paragraph code-paragraph" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI"> 
 // coreEvents
 const coreEventsModule = {};
 
@@ -2196,7 +2196,6 @@ exports = Object.assign(exports, {coreEventsModule})
 // TODO: vistrate
 // TODO: get current element name
 
-
 const ParagraphUtils = require("#paragraph-utils");
 const HelperFunctions = require("#helperFunctions");
 const coreWsClientModule = require("#coreWebstratesClientAPI");
@@ -2391,10 +2390,14 @@ paragraph.children[2].children[0].remove()
   
 // document.getElementsByName(paragraph)[0].children[2].children[0].remove()
   
-codestrate.editors.CodeMirror
+  setTimeout(() =&gt; {
+    
+    codestrate.editors.CodeMirror
   .factory.create(paragraph.children[2],
                   paragraph)
- 
+
+    
+  }, 1000) 
   
 }, 1500)
     
