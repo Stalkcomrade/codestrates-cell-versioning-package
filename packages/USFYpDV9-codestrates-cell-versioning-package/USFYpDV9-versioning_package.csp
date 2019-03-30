@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.4",
+	"version"    : "0.3.6",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,7 +12,8 @@
 	],
 	"changelog":
 	{
-    "0.4"   : "FIXED: now newly created sections are persistent, commeted part of opsClient",
+    "0.3.6" : "updated UI, ADDED: contributor + curr version indicators",
+    "0.3.5" : "FIXED: now newly created sections are persistent, commeted part of opsClient",
     "0.3.4" : "combining all into a pipeline",
     "0.3.2" : "versioning UI only for code chunks, refactoring opsUtils into proper functions",
     "0.3"   : "added coreWebstrateClient API by Kristian Antonsen + helper utils for ops processing",
@@ -2207,7 +2208,6 @@ webstrate.getOps(webstrate.version - version, webstrate.version, (x,y) =&gt; {
 const recOps = (paragraph) =&gt; {
   
   var el = paragraph.children[1].__pathNodes[0].children[0]
-  // var el = document.getElementsByName("idVersion2")[0].children[1].__pathNodes[0].children[0]
   
   var target = {
  			 id: el.id, path: el.toPath()
@@ -2239,7 +2239,6 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
             
             (el.op !== undefined) &amp;&amp; el.op.forEach(op =&gt; { // INFO: for each op
 
-                // debugger;
               // there are ops with path not possible to obtain
               // that is why we simply slice the last elements
                 if (cellLine.path.length &lt; op.p.length) {
@@ -2248,23 +2247,16 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
                     opContainerBeforeMutation = [...op.p]
                     opContainer.pop()
                     
-                  // HelperFunctions.compareArrays(opContainer, cellLine.path) &amp;&amp;
-                  //  console.log("Desired Op is Finded!")
                     
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
+                      			opMeta: op.session,
                       			realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
                             change: HelperFunctions.FilterObjectByKey(op, "p") // filtering path
                     })    
                 } else {
-
-                  
-                  // HelperFunctions.compareArrays(opContainer, cellLine.path) &amp;&amp; 
-                  //   console.log("TRUE, Op path: ", 
-                   //              opContainer, "Target Path: ", 
-                  //               cellLine.path,  "\n version: ", el.v)
                   
                     opContainer = [...op.p]
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
@@ -2332,6 +2324,7 @@ const processOpsAndApply = async (paragraph, ops) =&gt; {
   // SOLVED: main issue is that I need real ops, not helper objects I created
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
     
+  return opInst
 }
 
 
@@ -2342,6 +2335,8 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
     
    var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode;
    var opInst = await ops;
+  
+  var opsToReturn = []
    
   for (var i = opInst.length - 1; i &gt; opInst.length - opsQuantity - 1; i--) {
     
@@ -2349,14 +2344,17 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
       opTry.p = opTry.p.splice(-2)
       
       coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+    	opsToReturn.push(opInst[i])
              
 }
+  
+  	return opsToReturn
+  
 }
 
 
 
 // update mirror editor
-// FIXME: currently id of a paraph as input
 const updateEditor = (paragraph) =&gt; {
   
 setTimeout(() =&gt; {
@@ -2368,13 +2366,15 @@ codestrate.editors.CodeMirror
                   paragraph.children[1]) // content (pre element)
 
   
-}, 1000)
+}, 700)
     
 }
 
 
-const mainWrapper = (paragraph) =&gt; {
+const mainWrapper = async (paragraph) =&gt; {
 
+  let meta = {}
+  
   var target = recOps(paragraph)
 	console.log(target)
 
@@ -2384,19 +2384,17 @@ const mainWrapper = (paragraph) =&gt; {
 	var ind = findRelevantPiecesInOps(target, ops)
 	console.log("Relevant Ops", ind)
  
-	// FIXME: sorting
 	var acc = sortNclear(ind)
 	console.log("Sorting and Duplicates Removal", acc)
 
-	// var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
-
 	var acc = ind
-  processOpsAndApply(paragraph, acc)
+  meta["ops"] = await processOpsAndApply(paragraph, acc)
 	// OR
-	// opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
+	// meta.ops = opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
 
 	updateEditor(paragraph)
 
+  return meta
   
 }
 
@@ -2404,7 +2402,7 @@ exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps,
                                   sortNclear, 
                                   processOpsAndApply, processOpsAndApplyMultiple,
                                   updateEditor,
-                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
+                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="N4V8aEMg" last-execution-state="success" name="testing Utils"><pre data-type="content" type="text/javascript" id="testing-utils">const opsUtils = require("#opsUtils");
 
 
 const mainWrapper = (paragraph) =&gt; {
@@ -2436,7 +2434,7 @@ const mainWrapper = (paragraph) =&gt; {
 
 var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
+</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
 
 const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
@@ -2449,6 +2447,7 @@ const toggleForwardContributor = (paragraph) =&gt; {
 const toggleBackError = (paragraph) =&gt; {
     
 }
+
 const toggleForwardError = (paragraph) =&gt; {
 }
 
@@ -2461,23 +2460,52 @@ const toggleForwardSuccess = (paragraph) =&gt; {
 }
 
 
-const toggleBackTiny = (paragraph) =&gt; {
+const toggleBackTiny = async (paragraph) =&gt; {
+  
     console.log("Back Tiny");
-    console.log(paragraph)
-  	opsUtils.mainWrapper(paragraph)
+  	var meta = await opsUtils.mainWrapper(paragraph);
+  	updateIndicators(paragraph, meta);
+  
 }
+
 const toggleBackCardinal = (paragraph) =&gt; {
     console.log("Back Cardinal");
-    console.log(paragraph)
+    
 }
+
 const toggleForwardTiny = (paragraph) =&gt; {
     console.log("Forward Tiny");
-    console.log(paragraph)
+    
 }
+
 const toggleForwardCardinal = (paragraph) =&gt; {
     console.log("Forward Cardinal");
-    console.log(paragraph)
+    
 };
+
+
+const updateIndicators = (paragraph, meta) =&gt; {
+ 	
+  
+  // FIXME
+  if (!Array.isArray(meta.ops)) {
+    
+    console.log("Write fun to parse ops!")
+    
+  } else {
+   	
+    console.log("OOOOPPPSS", meta.ops)
+    
+    // FIXME: make a function to update indicators
+  // TODO:
+  paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+  paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.v
+  paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.session.userId
+    
+  }
+  
+}
+
 
 exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
@@ -2553,11 +2581,38 @@ importLib([
 	iconVersioningMode.classList.add("material-icons");
 	versioningMode.appendChild(iconVersioningMode);
 	header.appendChild(versioningMode);
+      
+  // TODO: current version indicator
+      
+   let versionNumberIndicator = document.createElement("div");
+	 versionNumberIndicator.classList.add("versioning-v-number");
+	 versionNumberIndicator.setAttribute("tooltip", "true");
+      
+   let versionText = document.createElement("p")
+   versionText.innerText = "3"
+   versionNumberIndicator.appendChild(versionText)
+   header.appendChild(versionNumberIndicator)   
+   
+      
+  // TODO: current contributor indicator
+      
+   let versionContributorIndicator = document.createElement("div");
+	 versionContributorIndicator.classList.add("versioning-contributor");
+	 versionContributorIndicator.setAttribute("tooltip", "true");
+        
+   let versionContributorText = document.createElement("p")
+   versionContributorText.innerText = "stlk"
+   versionContributorIndicator.appendChild(versionContributorText)
+   header.appendChild(versionContributorIndicator)   
+      
 
-
-        [{action: actionBackTiny, desc: "actionBackTiny"}, {action: actionBackCardinal, desc: "actionBackCardinal"},
-         {action: actionForwardTiny, desc: "actionForwardTiny"}, {action: actionForwardCardinal, desc: "actionForwardCardinal"}].forEach(action =&gt; {
-
+    // debugger;
+     try {
+       
+        [{action: actionBackTiny, desc: "actionBackTiny"}, 
+         {action: actionBackCardinal, desc: "actionBackCardinal"},
+         {action: actionForwardTiny, desc: "actionForwardTiny"}, 
+         {action: actionForwardCardinal, desc: "actionForwardCardinal"}].forEach(action =&gt; {
 
              var mc = new Hammer.Manager(action.action);
              
@@ -2594,6 +2649,12 @@ importLib([
              
              
          })
+       
+     } catch {
+       
+       console.log("Err!")
+       
+     }
         
     };
 
@@ -2610,10 +2671,6 @@ importLib([
         addVersioningButton(paragraph)
     });
 
-
-
-
-// });
 
 });
 
@@ -2649,69 +2706,7 @@ importLib([
 // codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
 
 
-</pre></div><div class="paragraph style-paragraph collapsed" data-id="wHtYFUqf" name="Versioning Indicator"><style data-type="content" type="text/css">#cellVersioning-indicator {
-	position: fixed;
-	right: 0;
-	top: 100px;
-	width: 30px;
-	height: 400px;
-	cursor: pointer;
-
-	color:  rgba(255, 255, 255, 0.2);
-	background: rgba(0, 0, 0, 0.2);
-	border-radius: 2px;
-	z-index: 201;
-}
-
-#cellVersioning-indicator:hover {
-	color: inherit;
-	background: rgba(0, 0, 0, 0.3);
-}
-
-#cellVersioning-indicator:before {
-	padding-left: 7px;
-	padding-bottom: 7px;
-	content: attr(icon);
-	position: relative;
-	display: inline-block;
-	transform: rotate(90deg) translate3d(0, -100%, 0);
-	transform-origin: 0 0 0;
-
-	font-family: "Material Icons";
-	font-weight: normal;
-	font-style: normal;
-	/* font-size: 24px; */
-	display: inline-block;
-	line-height: 1;
-	text-transform: none;
-	letter-spacing: normal;
-	word-wrap: normal;
-	white-space: nowrap;
-	direction: ltr;
-	-webkit-font-smoothing: antialiased;
-	text-rendering: optimizeLegibility;
-	-moz-osx-font-smoothing: grayscale;
-	font-feature-settings: "liga";
-}
-
-#cellVersioning-indicator:after {
-	padding: 5px;
-	padding-left: 10px;
-	content: attr(name);
-	display: inline-block;
-	width: 200px;
-	position: relative;
-	transform: rotate(90deg) translate3d(0, -100%, 0);
-	transform-origin: 0 0 0;
-}
-
-#cellVersioning-indicator:not([name]):after {
-	content: "No Name";
-}
-
-#cellVersioning-indicator.hidden {
-	display: none;
-}</style></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
+</pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
 html .paragraph .toggle-versioning-back-cardinal,
 html .paragraph .toggle-versioning-forward-tiny, 
 html .paragraph .toggle-versioning-forward-cardinal,
@@ -2722,6 +2717,22 @@ html .paragraph .toggle-versioning-mode {
 
 html .paragraph .toggle-versioning-mode i:after {
 	content: "change_history";
+}
+
+.v-active i:after {
+	color: blue;
+}
+
+.versioning-v-number p {
+ 	  margin-top: 0.2em;
+  	margin-right: 0.2em;
+  	color: white;
+}
+
+.versioning-contributor p {
+ 	  margin-top: 0.2em;
+  	margin-right: 1em;
+  	color: white;
 }
 
 html .paragraph .toggle-versioning-back-tiny i:after {
