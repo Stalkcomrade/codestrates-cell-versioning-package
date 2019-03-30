@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.3.6",
+	"version"    : "0.3.8",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,6 +12,7 @@
 	],
 	"changelog":
 	{
+    "0.3.8" : "ADDED: enter/exit mode function, not finished",
     "0.3.6" : "updated UI, ADDED: contributor + curr version indicators",
     "0.3.5" : "FIXED: now newly created sections are persistent, commeted part of opsClient",
     "0.3.4" : "combining all into a pipeline",
@@ -2250,7 +2251,7 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
                     
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
-                      			opMeta: op.session,
+                      			opMeta: el.session,
                       			realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
@@ -2261,7 +2262,8 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
                     opContainer = [...op.p]
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
-                      			ealOp: op,
+                      			opMeta: el.session,
+                      			realOp: op,
                             path: opContainer,
                             version: el.v,
                             change: HelperFunctions.FilterObjectByKey(op, "p")}) // filtering path
@@ -2324,7 +2326,7 @@ const processOpsAndApply = async (paragraph, ops) =&gt; {
   // SOLVED: main issue is that I need real ops, not helper objects I created
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
     
-  return opInst
+  return opInst[opInst.length - 1]
 }
 
 
@@ -2484,11 +2486,11 @@ const toggleForwardCardinal = (paragraph) =&gt; {
 };
 
 
+
 const updateIndicators = (paragraph, meta) =&gt; {
- 	
   
   // FIXME
-  if (!Array.isArray(meta.ops)) {
+  if (Array.isArray(meta.ops)) {
     
     console.log("Write fun to parse ops!")
     
@@ -2497,17 +2499,115 @@ const updateIndicators = (paragraph, meta) =&gt; {
     console.log("OOOOPPPSS", meta.ops)
     
     // FIXME: make a function to update indicators
-  // TODO:
-  paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-  paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.v
-  paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.session.userId
+    // TODO:
+    paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
+    paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
     
   }
   
 }
 
+// enter or exit versioning mode
+// pg - paragraph
+// content - innerText of code paragraph
+const enterVersioningMode = (pg, content) =&gt; {
+  
+  if ( pg.getElementsByClassName("toggle-versioning-mode")[0]
+      .getAttribute("class") === "toggle-versioning-mode v-active") {
+    
+    
+    // exit mode
+    // const exitVersioningMode = (pg) =&gt; {
+  
+  	var codeEditorTmp = document.getElementsByName("ws1")[0].children[2]
+  
+		var content = document.getElementById("save-container").innerText
+		document.getElementById("save-container").remove()
+		
+		const codeContainer = document.createElement("pre");
+		codeContainer.setAttribute("data-type", "content");
+		codeContainer.setAttribute("type", "text/javascript");
 
-exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
+		const textNode = document.createTextNode(content);
+		codeContainer.appendChild(textNode);
+
+
+		document.getElementsByName("ws1")[0].appendChild(codeContainer)
+		// pg.children[2].children[0].remove()
+		document.getElementsByName("ws1")[0].children[2].children[0].remove()
+  
+
+		codestrate.editors.CodeMirror
+  		.factory.create(codeEditorTmp, // paragraph.children[2], // transient element to attach el to - Stays
+      		           codeContainer)
+          	       // paragraph.children[1]) // content (pre element)
+  
+// }
+     
+  } else {
+    
+    // enter mode
+    pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+     // TODO: load ops
+ 		 const vm = Codestrate.VirtualMachines.get("text/javascript");
+		const stlkQ = 30
+  	vm.addToGlobalContext({
+    	stlkQ
+  	})
+    
+    var codeEditorTmp = document.getElementsByName("ws1")[0].children[2]
+  
+// const ParagraphUtils = require("#paragraph-utils");
+// const paragraph = ParagraphUtils.createCodeParagraph()
+const transientContainer = document.createElement("transient")
+const codeContainer = document.createElement("pre");
+codeContainer.setAttribute("data-type", "content");
+codeContainer.setAttribute("type", "text/javascript");
+
+const textNode = document.createTextNode(content);
+codeContainer.appendChild(textNode);
+transientContainer.appendChild(codeContainer);
+// paragraph.appendChild(transientContainer);
+console.log("here")
+document.getElementsByName("ws1")[0].appendChild(transientContainer)
+  
+ 
+  
+// pg.children[2].children[0].remove()
+  
+  // before removing node, save to DOM to restore from it later
+  var containerSaveParagraph = document.createElement("transient")
+  containerSaveParagraph.setAttribute("id", "save-container")
+  containerSaveParagraph.setAttribute("class", "hidden")
+  containerSaveParagraph.style.display = "none"
+  containerSaveParagraph.innerText = content
+  document.body.appendChild(containerSaveParagraph)
+  
+  
+document.getElementsByName("ws1")[0].children[2].children[0].remove()
+  
+
+codestrate.editors.CodeMirror
+  .factory.create(codeEditorTmp, // paragraph.children[2], // transient element to attach el to - Stays
+                 codeContainer)
+                 // paragraph.children[1]) // content (pre element)
+    
+  }
+
+  
+}
+
+
+exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal,
+                                  toggleForwardTiny, toggleForwardCardinal, 
+                                 enterVersioningMode})</pre></div><div class="paragraph code-paragraph" data-id="V3ffv5uB" last-execution-state="success"><pre data-type="content" type="text/javascript">
+
+
+//enterVersioningMode(document.getElementsByName("ws1")[0].children[1], 
+  //             document.getElementsByName("ws1")[0].children[1].innerHTML)
+
+// exitVersioningMode(document.getElementsByName("ws1")[0].children[1])</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
 
 importLib([
