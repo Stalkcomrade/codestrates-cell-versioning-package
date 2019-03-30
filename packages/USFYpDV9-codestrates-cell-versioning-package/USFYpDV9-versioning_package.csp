@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.3.4",
+	"version"    : "0.4",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,6 +12,7 @@
 	],
 	"changelog":
 	{
+    "0.4"   : "FIXED: now newly created sections are persistent, commeted part of opsClient",
     "0.3.4" : "combining all into a pipeline",
     "0.3.2" : "versioning UI only for code chunks, refactoring opsUtils into proper functions",
     "0.3"   : "added coreWebstrateClient API by Kristian Antonsen + helper utils for ops processing",
@@ -54,7 +55,8 @@ const compareSort = (a, b) =&gt; {
     return comparison;
 }
 
-exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI"> 
+exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI">
+
 // coreEvents
 const coreEventsModule = {};
 
@@ -335,16 +337,16 @@ coreUtilsModule.recursiveForEach = function(node, callback, parent = null) {
 	});
 };
 
-/**
- * Append a DOM element childElement to another DOM element parentElement. If the DOM element to
- * be appended is a script, prevent the execution of the script. If the parentElement is a
- * &lt;template&gt;, add the child to the parentElement's documentFragment instead. If a referenceNode
- * is specified, the element is inserted before the referenceNode.
- * @param {DOMNode} parentElement Parent element.
- * @param {DOMNode} childElement  Child element.
- * @param {DOMNode} referenceNode Node to insert before.
- * @public
- */
+
+//  * Append a DOM element childElement to another DOM element parentElement. If the DOM element to
+//  * be appended is a script, prevent the execution of the script. If the parentElement is a
+//  * &lt;template&gt;, add the child to the parentElement's documentFragment instead. If a referenceNode
+//  * is specified, the element is inserted before the referenceNode.
+//  * @param {DOMNode} parentElement Parent element.
+//  * @param {DOMNode} childElement  Child element.
+//  * @param {DOMNode} referenceNode Node to insert before.
+//  * @public
+//
 coreUtilsModule.appendChildWithoutScriptExecution = (parentElement, childElement, referenceNode) =&gt;
 {
 	// We just insert text nodes right away, we're only interested in doing fancy stuff with elements
@@ -556,9 +558,9 @@ coreUtilsModule.removeWidFromElement = wid =&gt; widMap.delete(wid);
  */
 coreUtilsModule.getElementByWid = wid =&gt; widMap.get(wid);
 
-// module.exports = coreUtilsModule;
+// // module.exports = coreUtilsModule;
 
-////////////////////////////////////////
+// ////////////////////////////////////////
 
 // INFO: corePathTree
 
@@ -831,18 +833,11 @@ PathTree.elementAtPath = function(parentElement, path) {
 	return PathTree.elementAtPath(childPathNode, path.slice(1));
 };
 
-////////////////////////////////////////////////////
+// ////////////////////////////////////////////////////
+// // INFO: coreMutation
 
-// INFO: coreMutation
-
-
-// JavaScript code here
-// var coreEvents = require('./coreEvents');
-// const coreUtils = require('./coreUtils');
 // const coreUtils = coreUtilsModule;
-
 var coreEvents = coreEventsModule;
-    
 const coreMutation = {};
 
 coreEvents.createEvent('mutation');
@@ -936,7 +931,7 @@ coreEvents.createEvent('DOMNodeInserted', { idempotent: true });
 coreEvents.createEvent('DOMNodeDeleted', { idempotent: true });
 
 // Whenever the DOM gets modified, we add/remove potential MutationObservers from documentFragments
-// (i.e. the things living inside &lt;template&gt;s).
+// // (i.e. the things living inside &lt;template&gt;s).
 coreEvents.addEventListener('DOMNodeInserted', addedNode =&gt; {
 	coreUtils.recursiveForEach(addedNode, (node) =&gt; {
 		if (node.content &amp;&amp; node.content.nodeType === document.DOCUMENT_FRAGMENT_NODE) {
@@ -953,10 +948,10 @@ coreEvents.addEventListener('DOMNodeDeleted', removedNode =&gt; {
 	});
 }, coreEvents.PRIORITY.IMMEDIATE);
 
-// To not create a live-lock, the coreOpApplier module needs to pause the mutation observer when
-// adding incoming ops to the DOM. Otherwise, those incoming ops would in turn create new ops, and
-// so on.
-// The following allows other modules to manage the MutationObservers.
+// // To not create a live-lock, the coreOpApplier module needs to pause the mutation observer when
+// // adding incoming ops to the DOM. Otherwise, those incoming ops would in turn create new ops, and
+// // so on.
+// // The following allows other modules to manage the MutationObservers.
 let isPaused = true;
 Object.defineProperty(coreMutation, 'isPaused', {
 	get: () =&gt; isPaused
@@ -983,9 +978,7 @@ coreMutation.resume = () =&gt; {
 	isPaused = false;
 };
 
-// module.exports = coreMutation;
-
-////////////////////////////////////////////////
+// ////////////////////////////////////////////////
 
 // coreDOM
 
@@ -1072,37 +1065,42 @@ coreDOMModule.overrideDocument = (property, context, value) =&gt; {
 	throw new Error('Invalid context', context);
 };
 
-/**
- * Proxy object for document. The proxy is actually defined in wrapper-header.js using an empty
- * object (documentProxyObj), which we now override with our own get trap.
- * @param  {Object} obj  Object the property is to be accessed on. Will always be document.
- * @param  {string} prop Name of property.
- * @return {mixed}       The property's value. Can be anything.
- */
-documentProxyObj.get = (obj, prop) =&gt; {
-	if (prop === 'PROXY_DOCUMENT') return true;
+///// INFO: this leads to the absence of persistence for
+///// the new sections
 
-	if (internalDocumentOverrides.has(prop)) {
-		// If the requested value is a function, bind the document's context to it and bind the
-		// original function as the first argument. This, for instance, allows somebody to override
-		// document.createElement and still have access to the original createElement function from
-		// within the new implementation.
-		return typeof internalDocumentOverrides.get(prop) === 'function'
-			? internalDocumentOverrides.get(prop).bind(obj, coreDOMModule.externalDocument[prop])
-			: internalDocumentOverrides.get(prop);
-	}
+// /**
+//  * Proxy object for document. The proxy is actually defined in wrapper-header.js using an empty
+//  * object (documentProxyObj), which we now override with our own get trap.
+//  * @param  {Object} obj  Object the property is to be accessed on. Will always be document.
+//  * @param  {string} prop Name of property.
+//  * @return {mixed}       The property's value. Can be anything.
+//  */
+// documentProxyObj.get = (obj, prop) =&gt; {
+// 	if (prop === 'PROXY_DOCUMENT') return true;
 
-	// If the requested value is a function, bind the document's context to it.
-	return typeof obj[prop] === 'function'
-		? obj[prop].bind(obj)
-		: obj[prop];
-};
+// 	if (internalDocumentOverrides.has(prop)) {
+// 		// If the requested value is a function, bind the document's context to it and bind the
+// 		// original function as the first argument. This, for instance, allows somebody to override
+// 		// document.createElement and still have access to the original createElement function from
+// 		// within the new implementation.
+// 		return typeof internalDocumentOverrides.get(prop) === 'function'
+// 			? internalDocumentOverrides.get(prop).bind(obj, coreDOMModule.externalDocument[prop])
+// 			: internalDocumentOverrides.get(prop);
+// 	}
 
-// module.exports = coreDOMModule;
+// 	// If the requested value is a function, bind the document's context to it.
+// 	return typeof obj[prop] === 'function'
+// 		? obj[prop].bind(obj)
+// 		: obj[prop];
+// };
 
-/////////////////////////////////////////////////////////////////////////////
+///// INFO: this leads to the absence of persistence for
+///// the new sections
 
-// INFO: coreJsonML
+
+// /////////////////////////////////////////////////////////////////////////////
+
+// // INFO: coreJsonML
 
 // JavaScript code here
 // 'use strict';
@@ -1113,11 +1111,10 @@ documentProxyObj.get = (obj, prop) =&gt; {
  */
 // const coreUtils = require('./coreUtils');
 // const coreDOM = require('./coreDOM');
-
 // const coreUtils = coreUtilsModule;
+
+
 const coreDOM = coreDOMModule;
-
-
 const coreJsonML = {};
 
 function isPlainObject(obj) {
@@ -1427,7 +1424,6 @@ function fromHTML(elem, filter) {
 coreJsonML.fromHTML = fromHTML;
 
 // module.exports = coreJsonML;
-
 // INFO: coreOpApplier
 
 /*
@@ -2153,7 +2149,9 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 	// operations would cause new mutations to be created, which in turn would cause the
 	// creation of new operations, leading to a livelock for all clients.
 	coreMutation.pause();
-   var op = ops
+        //        debugger;
+
+        var op = ops
 	// ops.forEach((op) =&gt; {
 	applyOpReverse(op, rootElement);
         // applyOp()
@@ -2165,9 +2163,8 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 // };
 
 
-
 exports = Object.assign(exports, {coreEventsModule})
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
+</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
 // TODO: different contributors
 // TODO: patching diff
 // TODO: output
@@ -2306,7 +2303,7 @@ const sortNclear = async (ind) =&gt; {
             // SOLVED: first two duplicates are not removed
             
             if (acc[acc.length - 1].version === value.version // INFO: comparing current with previous
-                &amp;&amp; compare(acc[acc.length - 1].path, value.path)) { // INFO: if previous is the same
+                &amp;&amp; HelperFunctions.compareArrays(acc[acc.length - 1].path, value.path)) { // INFO: if previous is the same
                 // INFO: not pushing duplicates
             } else { acc.push(value) }; // INFO: push unique (legacy)
             
@@ -2360,24 +2357,18 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
 
 // update mirror editor
 // FIXME: currently id of a paraph as input
-const updateEditor = async (paragraph) =&gt; {
+const updateEditor = (paragraph) =&gt; {
   
 setTimeout(() =&gt; {
 
 paragraph.children[2].children[0].remove()
   
-// document.getElementsByName(paragraph)[0].children[2].children[0].remove()
-  
-  setTimeout(() =&gt; {
-    
-    codestrate.editors.CodeMirror
-  .factory.create(paragraph.children[2],
-                  paragraph)
+codestrate.editors.CodeMirror
+  .factory.create(paragraph.children[2], // transient element to attach el to
+                  paragraph.children[1]) // content (pre element)
 
-    
-  }, 1000) 
   
-}, 1500)
+}, 1000)
     
 }
 
@@ -2413,7 +2404,7 @@ exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps,
                                   sortNclear, 
                                   processOpsAndApply, processOpsAndApplyMultiple,
                                   updateEditor,
-                                  mainWrapper})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
+                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="N4V8aEMg" last-execution-state="success"><pre data-type="content" type="text/javascript">const opsUtils = require("#opsUtils");
 
 
 const mainWrapper = (paragraph) =&gt; {
@@ -2445,7 +2436,7 @@ const mainWrapper = (paragraph) =&gt; {
 
 var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
-</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
 
 const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
@@ -2488,7 +2479,7 @@ const toggleForwardCardinal = (paragraph) =&gt; {
     console.log(paragraph)
 };
 
-exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
+exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal, toggleForwardTiny, toggleForwardCardinal })</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
 
 importLib([
@@ -2613,8 +2604,8 @@ importLib([
 
         const header = ParagraphUtils.getHeaderElement(paragraph);
         const content = ParagraphUtils.getContentElement(paragraph);
-      	console.log("header", header)
-      	console.log("content", content)
+      	// console.log("header", header)
+      	// console.log("content", content)
 
         addVersioningButton(paragraph)
     });
@@ -2635,27 +2626,27 @@ importLib([
 
 /******************************************************************/
 
-codestrate.addCommand("codestrates.cellVersioning", "Cell Versioning", (event) =&gt; {
+// codestrate.addCommand("codestrates.cellVersioning", "Cell Versioning", (event) =&gt; {
     
-    console.log(event)
+//     console.log(event)
     
-    let paragraph;
-    if (event !== null &amp;&amp; event.target !== null) {
-	let target = event.target;
-        paragraph = target.closest(".paragraph");
-    } else {
-	// paragraph = codestrate.focussedParagraph;
-    }
-    // if (!paragraph) {
-    // 	paragraph = document.querySelector(".paragraph.fullscreen:not([transient-fullscreen='false']),.paragraph[transient-fullscreen='true']");
-    // }
+//     let paragraph;
+//     if (event !== null &amp;&amp; event.target !== null) {
+// 	let target = event.target;
+//         paragraph = target.closest(".paragraph");
+//     } else {
+// 	// paragraph = codestrate.focussedParagraph;
+//     }
+//     // if (!paragraph) {
+//     // 	paragraph = document.querySelector(".paragraph.fullscreen:not([transient-fullscreen='false']),.paragraph[transient-fullscreen='true']");
+//     // }
 
-    if (paragraph) {
-	// FullscreenUtils.togglePersistedFullscreen(paragraph);
-    }
-});
+//     if (paragraph) {
+// 	// FullscreenUtils.togglePersistedFullscreen(paragraph);
+//     }
+// });
 
-codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
+// codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
 
 
 </pre></div><div class="paragraph style-paragraph collapsed" data-id="wHtYFUqf" name="Versioning Indicator"><style data-type="content" type="text/css">#cellVersioning-indicator {
