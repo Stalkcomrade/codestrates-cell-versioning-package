@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.3.8",
+	"version"    : "0.3.9",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,6 +12,7 @@
 	],
 	"changelog":
 	{
+    "0.3.9" : "UI enter/exit and way to update editor are ready",
     "0.3.8" : "ADDED: enter/exit mode function, not finished",
     "0.3.6" : "updated UI, ADDED: contributor + curr version indicators",
     "0.3.5" : "FIXED: now newly created sections are persistent, commeted part of opsClient",
@@ -2169,12 +2170,17 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 
 
 exports = Object.assign(exports, {coreEventsModule})
-</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: last-execution-state
+</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// FIXME: make it smooth
+//// FIXME: get rid of timeouts
+
+
+
+// TODO: last-execution-state
 // TODO: different contributors
 // TODO: patching diff
 // TODO: output
 // TODO: vistrate
-// TODO: get current element name
+// SOLVED: get current element name
 
 const ParagraphUtils = require("#paragraph-utils");
 const HelperFunctions = require("#helperFunctions");
@@ -2357,8 +2363,20 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
   
 }
 
+// TODO: 
+// adds ops per paragraph to the global scope
+const loadOps = () =&gt; {
+
+   	const vm = Codestrate.VirtualMachines.get("text/javascript");
+		const stlkQ = 30
+    vm.addToGlobalContext({
+    	stlkQ
+  	})
+
+}
 
 
+// TODO: add function for editor update
 // update mirror editor
 const updateEditor = (paragraph) =&gt; {
   
@@ -2440,6 +2458,7 @@ const mainWrapper = (paragraph) =&gt; {
 var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
 </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
+const ParagraphUtils = require("#paragraph-utils");
 
 const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
@@ -2515,113 +2534,79 @@ const updateIndicators = (paragraph, meta) =&gt; {
 // content - innerText of code paragraph
 const enterVersioningMode = (pg) =&gt; {
   
-  // change selector 
-  
   var initContent = pg.children[1]
   var content = document.getElementById("save-container-" + pg.getAttribute) === null 
   					? initContent.innerText
             : document.getElementById("save-container-" + pg.getAttribute).innerText
   
-  // content = content === null ? initContent.innerText : content // parsing old content
    
   if (pg.getElementsByClassName("toggle-versioning-mode")[0]
-      .getAttribute("class").indexOf("v-active") &gt; -1) {
-    
-    // exit mode
+      .getAttribute("class").indexOf("v-active") &gt; -1) { // exit mode
     
     // change the indicator
     pg.getElementsByClassName("toggle-versioning-mode")[0].classList.remove("v-active")
   
     // deletes save-container
 	  document.getElementById("save-container-" + pg.getAttribute("name")).remove()
-		
-    const transientContainer = document.createElement("transient")
-		const codeContainer = document.createElement("pre");
-		codeContainer.setAttribute("data-type", "content");
-		codeContainer.setAttribute("type", "text/javascript");
-
-		const textNode = document.createTextNode(content);
+    pg.getElementsByClassName("transient-save")[0].remove() // delete the whole transient element
     
-		codeContainer.appendChild(textNode);
     
-    // transientContainer.appendChild(codeContainer)
-
-    pg.appendChild(codeContainer)
-		pg.appendChild(transientContainer)
-    
-    // Don't  need to delete old pre content element, since it's inside transient elements
-    // FIXME: delete transient?
+    // FIXME: delete old editor
 		pg.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
-  
     
     try {
       
     	  codestrate.editors.CodeMirror
-  					.factory.create(transientContainer, // transient element to attach el to - Stays
-      			           			codeContainer)
+  					.factory.create(pg.getElementsByClassName("editor default-editor CodeMirror")[0], 
+      			           			pg.getElementsByTagName("pre")[0])
       
     } catch {
       	
       	console.log("Exit Versioning Mode")
       
-    }
-          	 
+    }      	 
      
-  } else {
+  } else { // enter mode
     
-    // enter mode
+    
     // updating indicator
-    
     pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-       
-    // TODO: load ops
- 		const vm = Codestrate.VirtualMachines.get("text/javascript");
-		const stlkQ = 30
-    vm.addToGlobalContext({
-    	stlkQ
-  	})
-    
-
+          
 		const transientContainer = document.createElement("transient")
+    transientContainer.classList.add("transient-save")
 		const codeContainer = document.createElement("pre");
+    const textNode = document.createTextNode(content); 
+    codeContainer.setAttribute("versioning-id-to-remove", pg.getAttribute("name"))
 		codeContainer.setAttribute("data-type", "content");
 		codeContainer.setAttribute("type", "text/javascript");
-
-    
-		const textNode = document.createTextNode(content);
 		codeContainer.appendChild(textNode);
 		transientContainer.appendChild(codeContainer);
 		pg.appendChild(transientContainer)
   
  
    // before removing node, save to DOM to restore from it later
-    
-    // TODO: auto-naming for code chunks?
-    // keep ID in the header?
+   // TODO: auto-naming for code chunks?
+   // keep ID in the header?
     
     // to work correctly, paragraph name should be provided
+    // I don;t need to remove previous pre
   	var containerSaveParagraph = document.createElement("transient")
   	containerSaveParagraph.setAttribute("id", "save-container-" + pg.getAttribute("name"))
   	containerSaveParagraph.setAttribute("class", "hidden")
   	containerSaveParagraph.style.display = "none"
   	containerSaveParagraph.innerText = content
+    document.body.appendChild(containerSaveParagraph)
     
-    initContent.remove() // deletes old pre content element
-    
-  // TODO: chaning save-container per every code chunk (or just add id?)
-  document.body.appendChild(containerSaveParagraph)
-  
    
   // removing old editor
-  pg.getElementsByClassName("editor default-editor CodeMirror")[0].remove()
+  pg.getElementsByClassName("editor default-editor CodeMirror")[0].children[0].remove()
     
     try {
 
-  // updates code editor
+// updates code editor
 codestrate.editors.CodeMirror
-      .factory.create(transientContainer,
+       .factory.create(pg.getElementsByClassName("editor default-editor CodeMirror")[0],
                       codeContainer)
-      
       
     } catch {
       
@@ -2636,7 +2621,7 @@ codestrate.editors.CodeMirror
 
 exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal,
                                   toggleForwardTiny, toggleForwardCardinal, 
-                                 enterVersioningMode})</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
+                                  enterVersioningMode})</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
 
 importLib([
