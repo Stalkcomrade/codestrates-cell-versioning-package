@@ -189,8 +189,6 @@ coreEventsModule.triggerEvent = (eventName, ...args) =&gt; {
 
 // coreUtils
 
-// JavaScript code here
-// 'use strict';
 const coreUtilsModule = {};
 
 let locationObject;
@@ -2130,21 +2128,17 @@ function applyOpReverse(op, rootElement) {
 
 
 
-// coreOpApplier.listenForOpsAndApplyOn = (rootElement) =&gt; {
-// 	coreEvents.addEventListener('receivedOps', (ops) =&gt; {
-// 		// We disable the mutation observers before applying the operations. Otherwise, applying the
-// 		// operations would cause new mutations to be created, which in turn would cause the
-// 		// creation of new operations, leading to a livelock for all clients.
-// 		coreMutation.pause();
+coreEvents.createEvent('receivedOpsStlkForward', { idempotent: true });
 
-// 		ops.forEach((op) =&gt; {
-// 			applyOp(op, rootElement);
-// 		});
 
-// 		// And re-enable MuationObservers.
-// 		coreMutation.resume();
-// 	}, coreEvents.PRIORITY.IMMEDIATE);
-// };
+ 	coreEvents.addEventListener('receivedOps', (rootElement, ops) =&gt; {
+ 		coreMutation.pause();
+
+	var op = ops
+	applyOp(op, rootElement);
+    
+  coreMutation.resume();
+ 	}, coreEvents.PRIORITY.IMMEDIATE);
 
 
 coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
@@ -2155,13 +2149,10 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 	// operations would cause new mutations to be created, which in turn would cause the
 	// creation of new operations, leading to a livelock for all clients.
 	coreMutation.pause();
-        //        debugger;
 
-        var op = ops
-	// ops.forEach((op) =&gt; {
+  var op = ops
 	applyOpReverse(op, rootElement);
-        // applyOp()
-	// });
+ 
         
 	// And re-enable MuationObservers.
 	coreMutation.resume();
@@ -2172,7 +2163,6 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 exports = Object.assign(exports, {coreEventsModule})
 </pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// FIXME: make it smooth
 //// FIXME: get rid of timeouts
-
 
 
 // TODO: last-execution-state
@@ -2266,6 +2256,7 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
                             version: el.v,
                             change: HelperFunctions.FilterObjectByKey(op, "p") // filtering path
                     })    
+                  
                 } else {
                   
                     opContainer = [...op.p]
@@ -2321,27 +2312,41 @@ const sortNclear = async (ind) =&gt; {
 
 
 // apply only 1 operational transformation
-// TODO: made modes, aka last successfull, last error, contributor-basis
-const processOpsAndApply = async (paragraph, ops) =&gt; {
+// TODO: get ops on input 
+// backward or forward - operationalMode
+const processOpsAndApply = async (paragraph, ops, operationalMode) =&gt; {
   
   // var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
-  
   var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode   
   var opInst = await ops;
   
   var opTry = opInst[opInst.length - 1].realOp
   opTry.p = opTry.p.splice(-2)
 
+  if (operationalMode === "backward") {
+    
   // SOLVED: main issue is that I need real ops, not helper objects I created
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
     
   return opInst[opInst.length - 1]
+    
+    
+  } else {
+    
+  coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
+    
+  // FIXME: what to return?
+  return opInst[opInst.length - 1]
+    
+    
+  } 
+  
 }
 
 
-// apply several (how to define the proper edge) operational transformation
-// number of ops to apply sequentilly 
-// TODO: made modes, aka last successfull, last error, contributor-basis
+// apply several (how to define the proper scope) operational transformation
+// TODO: number of ops to apply sequentilly 
+// TODO: backward or forward
 const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
     
    var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode;
@@ -2363,40 +2368,74 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
   
 }
 
-// TODO: 
-// adds ops per paragraph to the global scope
-const loadOps = () =&gt; {
-
-   	const vm = Codestrate.VirtualMachines.get("text/javascript");
-		const stlkQ = 30
-    vm.addToGlobalContext({
-    	stlkQ
-  	})
-
-}
-
-
-// TODO: add function for editor update
-// update mirror editor
-const updateEditor = (paragraph) =&gt; {
+// looks for the corresponding opsObject for paragraph
+const getOpsFromCuex = (paragraph, cuex) =&gt; {
   
-setTimeout(() =&gt; {
+  var paragraphId = paragraph.getAttribute("data-id")
+ 
+  const interval = setInterval(() =&gt; {
+        
+         if (typeof cuex === "undefined") {
+    	
 
-paragraph.children[2].children[0].remove()
-  
-codestrate.editors.CodeMirror
-  .factory.create(paragraph.children[2], // transient element to attach el to
-                  paragraph.children[1]) // content (pre element)
-
-  
-}, 700)
+    console.log("Storage for paragraph is Empty!", cuex)
     
+  } else {
+    
+    clearInterval(interval)
+    console.log("Storage for paragraph is Accessed:")
+    
+    return cuex.filter(el =&gt; {if (el["paragraphId"] === paragraphId) return el})
+    
+  }
+  
+    }, 300);
+  
+ 
+  
 }
 
+// adds ops per paragraph to the global scope
+const saveOps = async (paragraph, ops) =&gt; {
+  
+  // if ops loaded for the first time
+  // means, cuex=opsStorage is null
+  
+  var paragraphId = paragraph.getAttribute("data-id")
+  
+  if (typeof cuex === "undefined") {
+		
+    console.log("Creating Cuex Storage")
+    
+    const vm = Codestrate.VirtualMachines.get("text/javascript");
+		const cuex = []
+    vm.addToGlobalContext({
+    	cuex
+  	})
+    
+    cuex.push({"paragraphId":  paragraphId, "opsOb": await ops })
+    console.log("Cuex is Updated after creation with", cuex)
+    
+  } else {
+    
+    // FIXME
+    // if corresponding opsObject is already present, delete and add new
+   //  var cuexInd = cuex.filter((el, index) =&gt; {if (el["paragraphId"] === paragraphId) return index})
+    // cueInd &gt; -1 &amp;&amp; cuex[cueInd] &amp;&amp; console.log("Cleaned Stale opsObject for paragraph ")
+    
+    cuex.push({"paragraphId":  paragraphId, "opsOb": await ops })
+    console.log("Cuex is Updated", cuex)
+    
+  }
 
+
+}
+
+// parses ops per a paragraph
+// TODO: refactor this to the enter/exit of the mode
 const mainWrapper = async (paragraph) =&gt; {
 
-  let meta = {}
+  // let meta = {}
   
   var target = recOps(paragraph)
 	console.log(target)
@@ -2411,21 +2450,20 @@ const mainWrapper = async (paragraph) =&gt; {
 	console.log("Sorting and Duplicates Removal", acc)
 
 	var acc = ind
-  meta["ops"] = await processOpsAndApply(paragraph, acc)
-	// OR
-	// meta.ops = opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
 
-	updateEditor(paragraph)
+  saveOps(paragraph, acc) // get ops and save them
+  console.log("Ops are save to Cuex", acc)
 
-  return meta
+  return acc
   
 }
+
 
 exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps, 
                                   sortNclear, 
                                   processOpsAndApply, processOpsAndApplyMultiple,
-                                  updateEditor,
-                                  mainWrapper})</pre></div><div class="paragraph code-paragraph" data-id="N4V8aEMg" last-execution-state="success" name="testing Utils"><pre data-type="content" type="text/javascript" id="testing-utils">const opsUtils = require("#opsUtils");
+                                  getOpsFromCuex, saveOps,
+                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="N4V8aEMg" last-execution-state="success" name="testing Utils"><pre data-type="content" type="text/javascript" id="testing-utils">const opsUtils = require("#opsUtils");
 
 
 const mainWrapper = (paragraph) =&gt; {
@@ -2450,7 +2488,7 @@ const mainWrapper = (paragraph) =&gt; {
 	// OR
 	// opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
 
-	opsUtils.updateEditor(paragraph)
+	opsUtils.updateEditor(paragraph) // FIXME: check this
 
   
 }
@@ -2460,6 +2498,8 @@ mainWrapper(paragraph)
 </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
 const ParagraphUtils = require("#paragraph-utils");
 
+
+////// TODO: 
 const toggleBackContributor = (paragraph) =&gt; {
     console.log("Back Contributor")
 }
@@ -2482,18 +2522,31 @@ const toggleBackSuccess = (paragraph) =&gt; {
 const toggleForwardSuccess = (paragraph) =&gt; {
 
 }
+////////
 
 
 const toggleBackTiny = async (paragraph) =&gt; {
   
     console.log("Back Tiny");
-  	var meta = await opsUtils.mainWrapper(paragraph);
-  	updateIndicators(paragraph, meta);
+ 
+  	const vm = Codestrate.VirtualMachines.get("text/javascript");
+  
+  	var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
+  	// console.log("Cuex", cuex)
+  	var stateSelection = chooseOpBeforeApply(paragraph);
+    console.log(localOpsState)
+  
+  	// meta["ops"] = await opsUtils.processOpsAndApply(paragraph, acc)
+		// updateEditor(paragraph);
+  	// updateIndicators(paragraph, meta);
+  
   
 }
 
 const toggleBackCardinal = (paragraph) =&gt; {
     console.log("Back Cardinal");
+  
+  // meta.ops = opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10);
     
 }
 
@@ -2508,19 +2561,71 @@ const toggleForwardCardinal = (paragraph) =&gt; {
 };
 
 
+// TODO: make modes, aka last successfull, last error, contributor-basis
 
+
+// defines another abstratction to choose proper ops to apply
+// or incorporate them into already existing function
+// better write a middleware
+
+const chooseOpBeforeApply = (paragraph) =&gt; {
+  
+   
+  const interval = setInterval(() =&gt; {
+ 
+    
+    var version = paragraph.getElementsByClassName("versioning-v-number")[0]
+  .children[0].innerText
+  var contributor = paragraph.getElementsByClassName("versioning-contributor")[0]
+  .children[0].innerText
+    
+        if (typeof version === "undefined" &amp;&amp; typeof contributor === "undefined") {
+ 
+         		 console.log("OpsSelector is not yet Resolved")
+          	
+          
+        } else {
+          
+         	 clearInterval(interval)
+         	  console.log("OpsSelector is Resolved,", version, contributor)
+          
+        }
+    }, 300);
+  
+  return {"version": version, 
+          "contributor": contributor}
+}
+
+// FIXME: add function for editor update
+// update mirror editor
+const updateEditor = (paragraph) =&gt; {
+  
+setTimeout(() =&gt; {
+
+	paragraph.children[2].children[0].remove()
+  
+codestrate.editors.CodeMirror
+  .factory.create(paragraph.children[2], // transient element to attach el to
+                  paragraph.children[1]) // content (pre element)
+
+  
+}, 700)
+    
+}
+
+// TODO: add/remove indicators and add new variable for this
 const updateIndicators = (paragraph, meta) =&gt; {
   
-  // FIXME
+  // FIXME:
   if (Array.isArray(meta.ops)) {
     
     console.log("Write fun to parse ops!")
     
   } else {
    	
-    console.log("OOOOPPPSS", meta.ops)
+    console.log("Ops are recieved", meta.ops)
     
-    // FIXME: make a function to update indicators
+    // TODO: make a function to update indicators
     paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
     paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
     paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
@@ -2532,7 +2637,7 @@ const updateIndicators = (paragraph, meta) =&gt; {
 // enter or exit versioning mode
 // pg - paragraph
 // content - innerText of code paragraph
-const enterVersioningMode = (pg) =&gt; {
+const enterVersioningMode = async (pg) =&gt; {
   
   var initContent = pg.children[1]
   var content = document.getElementById("save-container-" + pg.getAttribute) === null 
@@ -2568,6 +2673,8 @@ const enterVersioningMode = (pg) =&gt; {
      
   } else { // enter mode
     
+    // fetching ops history to retrive ops per paragraph 
+    var meta = await opsUtils.mainWrapper(paragraph);
     
     // updating indicator
     pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
@@ -2784,8 +2891,6 @@ importLib([
 
         const header = ParagraphUtils.getHeaderElement(paragraph);
         const content = ParagraphUtils.getContentElement(paragraph);
-      	// console.log("header", header)
-      	// console.log("content", content)
 
         addVersioningButton(paragraph)
     });
@@ -2793,14 +2898,12 @@ importLib([
 
 });
 
-/******************************************************************************/
 
 // TODO: exit versioning and return to the last state
-// Exit fullscreen when transient fullscreen paragraph was deleted
+// Exit versioning mode
 // const selector = document.liveQuerySelectorAll('.paragraph.fullscreen');
 // selector.removed(FullscreenUtils.exitFullscreen);
 
-/******************************************************************/
 
 // codestrate.addCommand("codestrates.cellVersioning", "Cell Versioning", (event) =&gt; {
     
