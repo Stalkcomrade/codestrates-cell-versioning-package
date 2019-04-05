@@ -2131,7 +2131,7 @@ function applyOpReverse(op, rootElement) {
 coreEvents.createEvent('receivedOpsStlkForward', { idempotent: true });
 
 
- 	coreEvents.addEventListener('receivedOps', (rootElement, ops) =&gt; {
+ 	coreEvents.addEventListener('receivedOpsStlkForward', (rootElement, ops) =&gt; {
  		coreMutation.pause();
 
 	var op = ops
@@ -2372,8 +2372,11 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
 const getOpsFromCuex = (paragraph, cuex) =&gt; {
   
   var paragraphId = paragraph.getAttribute("data-id")
+  console.log("paragraphId", paragraphId)
+  
+  return new Promise((resolve,reject) =&gt; {
  
-  const interval = setInterval(() =&gt; {
+    const interval = setInterval(() =&gt; {
         
          if (typeof cuex === "undefined") {
     	
@@ -2383,14 +2386,17 @@ const getOpsFromCuex = (paragraph, cuex) =&gt; {
   } else {
     
     clearInterval(interval)
-    console.log("Storage for paragraph is Accessed:")
+    var localOpObject = cuex.filter(el =&gt; {if (el["paragraphId"] === paragraphId) return el})
+    console.log("Storage for paragraph is Accessed:", localOpObject)
     
-    return cuex.filter(el =&gt; {if (el["paragraphId"] === paragraphId) return el})
+    resolve(localOpObject)
     
   }
   
     }, 300);
-  
+      
+    
+  })
  
   
 }
@@ -2533,10 +2539,14 @@ const toggleBackTiny = async (paragraph) =&gt; {
   
   	var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
   	// console.log("Cuex", cuex)
-  	var stateSelection = chooseOpBeforeApply(paragraph);
-    console.log(localOpsState)
+  	var stateSelection = await chooseOpBeforeApply(paragraph);
+    console.log("localOpsState", localOpsState)
+  	console.log("stateSelection", stateSelection)
   
-  	// meta["ops"] = await opsUtils.processOpsAndApply(paragraph, acc)
+  	var meta = {}
+  
+  	meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState)
+  
 		// updateEditor(paragraph);
   	// updateIndicators(paragraph, meta);
   
@@ -2570,8 +2580,9 @@ const toggleForwardCardinal = (paragraph) =&gt; {
 
 const chooseOpBeforeApply = (paragraph) =&gt; {
   
-   
-  const interval = setInterval(() =&gt; {
+  return new Promise((resolve,reject) =&gt; {
+    
+    const interval = setInterval(() =&gt; {
  
     
     var version = paragraph.getElementsByClassName("versioning-v-number")[0]
@@ -2587,14 +2598,24 @@ const chooseOpBeforeApply = (paragraph) =&gt; {
         } else {
           
          	 clearInterval(interval)
+          
+          resolve(
+            {"version": version, 
+          	"contributor": contributor}
+          	)
+          
          	  console.log("OpsSelector is Resolved,", version, contributor)
           
         }
     }, 300);
-  
-  return {"version": version, 
-          "contributor": contributor}
+    
+    
+  })
 }
+   
+ 
+  // return {
+// }
 
 // FIXME: add function for editor update
 // update mirror editor
@@ -2674,7 +2695,8 @@ const enterVersioningMode = async (pg) =&gt; {
   } else { // enter mode
     
     // fetching ops history to retrive ops per paragraph 
-    var meta = await opsUtils.mainWrapper(paragraph);
+    // var meta = await opsUtils.mainWrapper(paragraph);
+    var meta = await opsUtils.mainWrapper(pg);
     
     // updating indicator
     pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
