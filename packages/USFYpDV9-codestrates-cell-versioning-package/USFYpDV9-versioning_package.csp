@@ -2176,12 +2176,18 @@ const ParagraphUtils = require("#paragraph-utils");
 const HelperFunctions = require("#helperFunctions");
 const coreWsClientModule = require("#coreWebstratesClientAPI");
 
+
+const timeout = 200
+
 // receive array of ops from last til user-defined version
 // input argument controls the range of received ops
 // so, currentVersion - inputVersion
+// by default, parse all
 const getOps = (version) =&gt; {
   
 var tsd;
+var version = typeof version  === "undefined" &amp;&amp; webstrate.version; // if version is not specified, get the whole history
+  
 webstrate.getOps(webstrate.version - version, webstrate.version, (x,y) =&gt; {
 		tsd = y;
 });
@@ -2197,7 +2203,7 @@ webstrate.getOps(webstrate.version - version, webstrate.version, (x,y) =&gt; {
           	resolve(tsd)
          	  console.log("Resolved")
         }
-    }, 1000);
+    }, timeout);
     
    
 });
@@ -2312,34 +2318,72 @@ const sortNclear = async (ind) =&gt; {
 
 
 // apply only 1 operational transformation
-// TODO: get ops on input 
+// get ops on input 
 // backward or forward - operationalMode
-const processOpsAndApply = async (paragraph, ops, operationalMode) =&gt; {
+// returns promise with opsApplied to update the indcator of the current state
+const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMode) =&gt; {
   
+
   // var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
   var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode   
   var opInst = await ops;
   
-  var opTry = opInst[opInst.length - 1].realOp
-  opTry.p = opTry.p.splice(-2)
+ 
+  // choose next op based on the current one to apply
+  // index of opInst.opsOb is relative, absolute is used in UI (version)
+	// derfor, filter opsOb and pass the proper absolute/relative indexes
+  // TODO: try to use a linked list here
+  var opTry;
+
+  return new Promise((resolve,reject) =&gt; {
 
   if (operationalMode === "backward") {
+    
+    // first, find index within object of the current version
+		var prIndex = opInst.opsOb.reduce((acc, op, index) =&gt; {
+          return op.version == stateSelection.version &amp;&amp; index}, 
+                                          {})
+		// after, find the previous index
+		var previousOp = opInst.opsOb[prIndex]
+
+    
+  // var previousOp = opInst.opsOb.filter(op =&gt; {return op.version === stateSelection.version - 1 &amp;&amp; op})
+  opTry = previousOp.realOp
+  opTry.p = opTry.p.splice(-2)
     
   // SOLVED: main issue is that I need real ops, not helper objects I created
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
     
-  return opInst[opInst.length - 1]
+  console.log("Previous op", previousOp)
+  resolve(previousOp)
     
     
-  } else {
+  } else if (operationalMode === "forward") {
+    
+    var nxtIndex = opInst.opsOb.reduce((acc, op, index) =&gt; {
+          return op.version == stateSelection.version &amp;&amp; index}, 
+                                          {})
+		// after, find the previous index
+		var nextOp = opInst.opsOb[nxtIndex]
+    
+  // var nextOp = opInst.opsOb.filter(op =&gt; {return op.version === stateSelection.version + 1 &amp;&amp; op})
+  opTry = nextOp.realOp
+  opTry.p = opTry.p.splice(-2)  
     
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
     
-  // FIXME: what to return?
-  return opInst[opInst.length - 1]
+  resolve(nextOp)  
+    
+  } else {
+    
+    console.error("Specify operationalMode!")
+    reject()
+    
+  }
     
     
-  } 
+  })
+  
   
 }
 
@@ -2354,13 +2398,13 @@ const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
   
   var opsToReturn = []
    
-  for (var i = opInst.length - 1; i &gt; opInst.length - opsQuantity - 1; i--) {
+  for (var i = opInst.opsOb.length - 1; i &gt; opInst.opsOb.length - opsQuantity - 1; i--) {
     
-   		var opTry = opInst[i].realOp
+   		var opTry = opInst.opsOb[i].realOp
       opTry.p = opTry.p.splice(-2)
       
       coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
-    	opsToReturn.push(opInst[i])
+    	opsToReturn.push(opInst.opsOb[i])
              
 }
   
@@ -2386,14 +2430,14 @@ const getOpsFromCuex = (paragraph, cuex) =&gt; {
   } else {
     
     clearInterval(interval)
-    var localOpObject = cuex.filter(el =&gt; {if (el["paragraphId"] === paragraphId) return el})
+    var localOpObject = cuex.filter(el =&gt; {return (el["paragraphId"] === paragraphId) &amp;&amp; el})
     console.log("Storage for paragraph is Accessed:", localOpObject)
     
     resolve(localOpObject)
     
   }
   
-    }, 300);
+    }, timeout);
       
     
   })
@@ -2426,7 +2470,7 @@ const saveOps = async (paragraph, ops) =&gt; {
     
     // FIXME
     // if corresponding opsObject is already present, delete and add new
-   //  var cuexInd = cuex.filter((el, index) =&gt; {if (el["paragraphId"] === paragraphId) return index})
+    // var cuexInd = cuex.filter((el, index) =&gt; {if (el["paragraphId"] === paragraphId) return index})
     // cueInd &gt; -1 &amp;&amp; cuex[cueInd] &amp;&amp; console.log("Cleaned Stale opsObject for paragraph ")
     
     cuex.push({"paragraphId":  paragraphId, "opsOb": await ops })
@@ -2438,15 +2482,13 @@ const saveOps = async (paragraph, ops) =&gt; {
 }
 
 // parses ops per a paragraph
-// TODO: refactor this to the enter/exit of the mode
+// is used in enter/exit of the mode
 const mainWrapper = async (paragraph) =&gt; {
-
-  // let meta = {}
   
   var target = recOps(paragraph)
 	console.log(target)
 
-	var ops = getOps(1000).then((dt) =&gt; {return dt})
+	var ops = getOps().then((dt) =&gt; {return dt})
 	console.log("All Ops", ops)
 
 	var ind = findRelevantPiecesInOps(target, ops)
@@ -2465,7 +2507,8 @@ const mainWrapper = async (paragraph) =&gt; {
 }
 
 
-exports = Object.assign(exports, {recOps, findRelevantPiecesInOps, getOps, 
+exports = Object.assign(exports, {timeout, 
+                                  recOps, findRelevantPiecesInOps, getOps, 
                                   sortNclear, 
                                   processOpsAndApply, processOpsAndApplyMultiple,
                                   getOpsFromCuex, saveOps,
@@ -2503,6 +2546,7 @@ var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
 </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
 const ParagraphUtils = require("#paragraph-utils");
+const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 ////// TODO: 
@@ -2531,24 +2575,25 @@ const toggleForwardSuccess = (paragraph) =&gt; {
 ////////
 
 
-const toggleBackTiny = async (paragraph) =&gt; {
+const toggleBackTiny = async (paragraph, operationalMode = "backward") =&gt; {
   
     console.log("Back Tiny");
  
-  	const vm = Codestrate.VirtualMachines.get("text/javascript");
   
   	var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-  	// console.log("Cuex", cuex)
   	var stateSelection = await chooseOpBeforeApply(paragraph);
+  
     console.log("localOpsState", localOpsState)
   	console.log("stateSelection", stateSelection)
   
   	var meta = {}
   
-  	meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState)
+  	meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
+                                                    stateSelection, operationalMode)
   
-		// updateEditor(paragraph);
-  	// updateIndicators(paragraph, meta);
+  
+		await updateEditor(paragraph, meta["ops"]);
+  	await updateIndicators(paragraph, meta);
   
   
 }
@@ -2572,7 +2617,6 @@ const toggleForwardCardinal = (paragraph) =&gt; {
 
 
 // TODO: make modes, aka last successfull, last error, contributor-basis
-
 
 // defines another abstratction to choose proper ops to apply
 // or incorporate them into already existing function
@@ -2613,45 +2657,46 @@ const chooseOpBeforeApply = (paragraph) =&gt; {
   })
 }
    
- 
-  // return {
-// }
 
-// FIXME: add function for editor update
-// update mirror editor
-const updateEditor = (paragraph) =&gt; {
+
+// function for editor update
+// second argument is the promise from opsApply function
+const updateEditor = async (paragraph, promise) =&gt; {
   
-setTimeout(() =&gt; {
-
 	paragraph.children[2].children[0].remove()
   
 codestrate.editors.CodeMirror
   .factory.create(paragraph.children[2], // transient element to attach el to
                   paragraph.children[1]) // content (pre element)
 
-  
-}, 700)
     
 }
 
+// a function to update indicators
+// takes object meta (returned from opsApply) or object from cuex, 
+// if nothing meta is not specified
 // TODO: add/remove indicators and add new variable for this
-const updateIndicators = (paragraph, meta) =&gt; {
+const updateIndicators = async (paragraph, meta) =&gt; {
   
-  // FIXME:
-  if (Array.isArray(meta.ops)) {
+  
+  if (typeof meta === "undefined") {
+   	 
+    meta = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex)
     
-    console.log("Write fun to parse ops!")
+    
+    paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].version
+    paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].opMeta.userId
     
   } else {
    	
-    console.log("Ops are recieved", meta.ops)
+    console.log("Ops are recieved", meta)
     
-    // TODO: make a function to update indicators
     paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
     paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
     paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
     
-  }
+   }
   
 }
 
@@ -2665,19 +2710,22 @@ const enterVersioningMode = async (pg) =&gt; {
   					? initContent.innerText
             : document.getElementById("save-container-" + pg.getAttribute).innerText
   
+  
    
   if (pg.getElementsByClassName("toggle-versioning-mode")[0]
       .getAttribute("class").indexOf("v-active") &gt; -1) { // exit mode
     
-    // change the indicator
+    // changes the indicator
     pg.getElementsByClassName("toggle-versioning-mode")[0].classList.remove("v-active")
+    pg.getElementsByClassName("versioning-v-number")[0].children[0].innerText = ""
+    pg.getElementsByClassName("versioning-contributor")[0].children[0].innerText = ""
   
     // deletes save-container
 	  document.getElementById("save-container-" + pg.getAttribute("name")).remove()
     pg.getElementsByClassName("transient-save")[0].remove() // delete the whole transient element
     
     
-    // FIXME: delete old editor
+    // deletes old editor
 		pg.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
     
     try {
@@ -2697,6 +2745,7 @@ const enterVersioningMode = async (pg) =&gt; {
     // fetching ops history to retrive ops per paragraph 
     // var meta = await opsUtils.mainWrapper(paragraph);
     var meta = await opsUtils.mainWrapper(pg);
+    updateIndicators(pg)
     
     // updating indicator
     pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
@@ -2825,31 +2874,30 @@ importLib([
 	versioningMode.appendChild(iconVersioningMode);
 	header.appendChild(versioningMode);
       
-  // TODO: current version indicator
+  // current version indicator
       
    let versionNumberIndicator = document.createElement("div");
 	 versionNumberIndicator.classList.add("versioning-v-number");
 	 versionNumberIndicator.setAttribute("tooltip", "true");
       
    let versionText = document.createElement("p")
-   versionText.innerText = "3"
+   versionText.innerText = ""
    versionNumberIndicator.appendChild(versionText)
    header.appendChild(versionNumberIndicator)   
    
       
-  // TODO: current contributor indicator
+  // current contributor indicator
       
    let versionContributorIndicator = document.createElement("div");
 	 versionContributorIndicator.classList.add("versioning-contributor");
 	 versionContributorIndicator.setAttribute("tooltip", "true");
         
    let versionContributorText = document.createElement("p")
-   versionContributorText.innerText = "stlk"
+   versionContributorText.innerText = ""
    versionContributorIndicator.appendChild(versionContributorText)
    header.appendChild(versionContributorIndicator)   
       
 
-    // debugger;
      try {
        
         [{action: actionBackTiny, desc: "actionBackTiny"}, 
