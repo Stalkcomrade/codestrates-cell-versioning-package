@@ -1,0 +1,28 @@
+<div class="section section-visible" data-id="MSQ6XRgs" data-type="package" name="Vue Vis Component" transient-focussed="true"><div class="paragraph data-paragraph" name="Properties" data-id="rhqF64wq"><pre data-type="content" type="application/json" class="section-properties">{
+  "version": "1.0",
+  "icon": "your_material_icon_string",
+  "description": "Your short description.",
+  "tags": [
+    "vue",
+    "vis"
+  ],
+  "assets": [
+    "vue.min.js",
+    "Vs.js"
+  ],
+  "dependencies": [
+    {
+      "id": "Dependency section-id",
+      "name": "Dependency Name",
+      "optional": false,
+      "usage": "Short explanation for what features a optional dependeny is used."
+    }
+  ],
+  "changelog": {
+    "1.0": "Initial version."
+  },
+  "github": {
+    "url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
+		"folder": "packages/MSQ6XRgs-codestrates-vis-components"
+  }
+}</pre></div></div>
