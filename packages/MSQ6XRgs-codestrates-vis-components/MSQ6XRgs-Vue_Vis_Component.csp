@@ -1,4 +1,4 @@
-<div class="section section-visible" data-id="MSQ6XRgs" data-type="package" name="Vue Vis Component" transient-focussed="true"><div class="paragraph data-paragraph" name="Properties" data-id="rhqF64wq"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible" data-id="MSQ6XRgs" data-type="package" name="Vue Vis Component" transient-focussed="true"><div class="paragraph body-paragraph" data-id="sAnJXK7f" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" name="Properties" data-id="rhqF64wq"><pre data-type="content" type="application/json" class="section-properties">{
   "version": "1.0",
   "icon": "your_material_icon_string",
   "description": "Your short description.",
@@ -19,13 +19,87 @@
     }
   ],
   "changelog": {
-    "1.0": "Initial version."
+    "0.1.5": "ADDED: helper functions for transient container + DOM erase.",
+    "0.1"  : "Initial version."
   },
   "github": {
     "url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
 		"folder": "packages/MSQ6XRgs-codestrates-vis-components"
   }
-}</pre></div><div class="paragraph body-paragraph" data-id="EHB7m3ZE" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph code-paragraph" data-id="hvxWKUnW" name="vue-component"><pre data-type="content" type="text/javascript" id="vue-component">// Define a new component called button-counter
+}</pre></div><div class="paragraph code-paragraph" data-id="rziJxxDR" name="helper-functions"><pre data-type="content" type="text/javascript" id="helper-functions">const createTransientContainer = (paragraphId) =&gt; {
+
+  Vue.config.ignoredElements = ['transient'];
+  // Create container and instantiate template.
+  const containerElement = document.createElement('transient');
+  containerElement.setAttribute('id', 'vue-container');
+  
+ 	const appTemplate = document.createElement("div")
+  appTemplate.setAttribute("id", "appTemplate")
+  
+  containerElement.appendChild(appTemplate.cloneNode(true));
+  document.querySelector("#" + paragraphId).appendChild(containerElement);
+  
+  return containerElement
+  
+}
+
+const eraseDom = (paragraphId) =&gt; {
+  
+	var myNode = document.getElementById(paragraphId);
+	while (myNode.firstChild) {
+  	  myNode.removeChild(myNode.firstChild)
+  } 
+}
+
+exports = Object.assign(exports, {createTransientContainer, eraseDom})</pre></div><div class="paragraph code-paragraph" data-id="Gk2npb9Y" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+  "Vs.min.js"
+]).then(() =&gt; {
+  
+  // console.log(Vs)
+  
+  const utils = require("#helper-functions")  
+  utils.eraseDom("vue-body")
+  var containerElement = utils.createTransientContainer("vue-body")
+  
+  const OverviewComponent = Vue.component('overview', {
+    template: `
+&lt;div&gt;
+
+  &lt;d3-metric
+  id="tmp"
+  :data="counter"
+  width="100%"
+  height="600px"&gt; 
+  &lt;/d3-metric&gt;
+
+&lt;/div&gt;
+  `,
+    components: {
+        'd3-metric': Vs.d3Metric,
+       
+    },
+    data: () =&gt; ({
+        counter: '35000',
+        value: 1
+    }),
+    mounted() {
+        this.counter = 45000
+    }
+
+});
+  
+  var global = new Vue({
+     components: {
+    'component-a': OverviewComponent
+  },
+     template: `&lt;component-a/&gt;`
+     
+   }).$mount(containerElement)
+
+  
+  
+})
+</pre></div><div class="paragraph code-paragraph" data-id="hvxWKUnW" name="vue-component"><pre data-type="content" type="text/javascript" id="vue-component">// Define a new component called button-counter
 
 const testComponent = Vue.component('button-counter', {
   data: function () {
@@ -39,38 +113,13 @@ const testComponent = Vue.component('button-counter', {
 exports = Object.assign(exports, {testComponent})
 </pre></div><div class="paragraph code-paragraph" data-id="MWRyGeSu" name="
 import-lib
-"><pre data-type="content" type="text/javascript" id="
+" last-execution-state="success"><pre data-type="content" type="text/javascript" id="
 import-lib
 ">importLib([
     "vue.min.js"
 ]).then(() =&gt; {
   
-  	
-  	// const testComponent = require("#vue-component")
-    // console.log("T", testComponent.testComponent)
   
-    Vue.config.ignoredElements = ['transient'];
-  
-    // Create container and instantiate template.
-    const containerElement = document.createElement('transient');
-    containerElement.setAttribute('id', 'vue-container');
-  
- 		const appTemplate = document.createElement("div")
-    appTemplate.setAttribute("id", "appTemplate")
-  
-    // const appTemplate = document.querySelector('#appTemplate');
-    containerElement.appendChild(appTemplate.cloneNode(true));
-    document.querySelector("#vue-body").appendChild(containerElement);
-  
-    // containerElement.appendChild(testComponent)
- 		// const tv = new Vue()
- 		// console.log(tv)
-  
-  	
-   // const app = new Vue({
-    	 //   router,
-      //	  store
-    	//}).$mount(containerElement)
   
   const testComponent = Vue.component('button-counter', {
   data: function () {
@@ -81,6 +130,9 @@ import-lib
   template: '&lt;button v-on:click="count++"&gt;You clicked me {{ count }} times.&lt;/button&gt;'
 })
   
+  const utils = require("#helper-functions")  
+  utils.eraseDom("vue-body")
+  var containerElement = utils.createTransientContainer("vue-body")
   
   const textComponent = Vue.component('text', {
   template: '&lt;h1 class="hello"&gt;"Hi"&lt;/h1&gt;',
@@ -99,10 +151,6 @@ import-lib
      
    }).$mount(containerElement)
 
-     
-    // console.log(testComponent)
-    // testComponent.$mount(containerElement);
-    // containerElement.appendChild(testComponent.testComponent.$el)
     
 })
-</pre></div><div class="paragraph body-paragraph" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"></div></div></div>
+</pre></div><div class="paragraph body-paragraph" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"><div unapproved=""><button unapproved="">You clicked me 0 times.</button> <h1 unapproved="" class="hello">"Hi"</h1></div></div></div></div>
