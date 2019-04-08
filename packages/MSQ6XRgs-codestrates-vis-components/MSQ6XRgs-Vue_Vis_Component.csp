@@ -8,7 +8,7 @@
   ],
   "assets": [
     "vue.min.js",
-    "Vs.js"
+    "Vs.min.js"
   ],
   "dependencies": [
     {
@@ -25,4 +25,84 @@
     "url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
 		"folder": "packages/MSQ6XRgs-codestrates-vis-components"
   }
-}</pre></div></div>
+}</pre></div><div class="paragraph body-paragraph" data-id="EHB7m3ZE" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph code-paragraph" data-id="hvxWKUnW" name="vue-component"><pre data-type="content" type="text/javascript" id="vue-component">// Define a new component called button-counter
+
+const testComponent = Vue.component('button-counter', {
+  data: function () {
+    return {
+      count: 0
+    }
+  },
+  template: '&lt;button v-on:click="count++"&gt;You clicked me {{ count }} times.&lt;/button&gt;'
+})
+
+exports = Object.assign(exports, {testComponent})
+</pre></div><div class="paragraph code-paragraph" data-id="MWRyGeSu" name="
+import-lib
+"><pre data-type="content" type="text/javascript" id="
+import-lib
+">importLib([
+    "vue.min.js"
+]).then(() =&gt; {
+  
+  	
+  	// const testComponent = require("#vue-component")
+    // console.log("T", testComponent.testComponent)
+  
+    Vue.config.ignoredElements = ['transient'];
+  
+    // Create container and instantiate template.
+    const containerElement = document.createElement('transient');
+    containerElement.setAttribute('id', 'vue-container');
+  
+ 		const appTemplate = document.createElement("div")
+    appTemplate.setAttribute("id", "appTemplate")
+  
+    // const appTemplate = document.querySelector('#appTemplate');
+    containerElement.appendChild(appTemplate.cloneNode(true));
+    document.querySelector("#vue-body").appendChild(containerElement);
+  
+    // containerElement.appendChild(testComponent)
+ 		// const tv = new Vue()
+ 		// console.log(tv)
+  
+  	
+   // const app = new Vue({
+    	 //   router,
+      //	  store
+    	//}).$mount(containerElement)
+  
+  const testComponent = Vue.component('button-counter', {
+  data: function () {
+    return {
+      count: 0
+    }
+  },
+  template: '&lt;button v-on:click="count++"&gt;You clicked me {{ count }} times.&lt;/button&gt;'
+})
+  
+  
+  const textComponent = Vue.component('text', {
+  template: '&lt;h1 class="hello"&gt;"Hi"&lt;/h1&gt;',
+			})
+  
+    
+   // var tt =  new testComponent({}).$mount(containerElement)   
+   // var df =  new textComponent({}).$mount(containerElement)
+   
+   var global = new Vue({
+     components: {
+    'component-a': testComponent,
+    'component-b': textComponent
+  },
+     template: `&lt;div&gt; &lt;component-a/&gt; &lt;component-b/&gt; &lt;/div&gt;`
+     
+   }).$mount(containerElement)
+
+     
+    // console.log(testComponent)
+    // testComponent.$mount(containerElement);
+    // containerElement.appendChild(testComponent.testComponent.$el)
+    
+})
+</pre></div><div class="paragraph body-paragraph" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"></div></div></div>
