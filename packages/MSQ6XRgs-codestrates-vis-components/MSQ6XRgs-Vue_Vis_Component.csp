@@ -12,10 +12,10 @@
   ],
   "dependencies": [
     {
-      "id": "Dependency section-id",
-      "name": "Dependency Name",
+      "id": "Mixins",
+      "name": "Mixins",
       "optional": false,
-      "usage": "Short explanation for what features a optional dependeny is used."
+      "usage": "Modularising Dependencies"
     }
   ],
   "changelog": {
@@ -118,7 +118,6 @@ import-lib
 ">importLib([
     "vue.min.js"
 ]).then(() =&gt; {
-  
   
   
   const testComponent = Vue.component('button-counter', {
