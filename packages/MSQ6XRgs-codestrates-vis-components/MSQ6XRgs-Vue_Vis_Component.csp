@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="MSQ6XRgs" data-type="package" name="Vue Vis Component" transient-focussed="true"><div class="paragraph body-paragraph" data-id="sAnJXK7f" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" name="Properties" data-id="rhqF64wq"><pre data-type="content" type="application/json" class="section-properties">{
-  "version": "1.0",
+  "version": "0.1.6",
   "icon": "your_material_icon_string",
   "description": "Your short description.",
   "tags": [
@@ -8,7 +8,12 @@
   ],
   "assets": [
     "vue.min.js",
-    "Vs.min.js"
+    "Vs.min.js",
+    "vuex.min.js",
+    "diff.min.js",
+    "diff2html.min.js",
+    "index.js",
+    "vue-context.js"
   ],
   "dependencies": [
     {
@@ -19,6 +24,7 @@
     }
   ],
   "changelog": {
+    "0.1.6": "checking how vue works in CS",
     "0.1.5": "ADDED: helper functions for transient container + DOM erase.",
     "0.1"  : "Initial version."
   },
@@ -26,7 +32,7 @@
     "url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
 		"folder": "packages/MSQ6XRgs-codestrates-vis-components"
   }
-}</pre></div><div class="paragraph code-paragraph" data-id="rziJxxDR" name="helper-functions"><pre data-type="content" type="text/javascript" id="helper-functions">const createTransientContainer = (paragraphId) =&gt; {
+}</pre></div><div class="paragraph code-paragraph collapsed" data-id="rziJxxDR" name="helper-functions"><pre data-type="content" type="text/javascript" id="helper-functions">const createTransientContainer = (paragraphId) =&gt; {
 
   Vue.config.ignoredElements = ['transient'];
   // Create container and instantiate template.
@@ -51,15 +57,2268 @@ const eraseDom = (paragraphId) =&gt; {
   } 
 }
 
-exports = Object.assign(exports, {createTransientContainer, eraseDom})</pre></div><div class="paragraph code-paragraph" data-id="Gk2npb9Y" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+exports = Object.assign(exports, {createTransientContainer, eraseDom})</pre></div><div class="paragraph code-paragraph" data-id="v3NGx7g5" last-execution-state="success" name="data-fetcher"><pre data-type="content" type="text/javascript" id="data-fetcher">// const userId = 'cklokmose:github' //webstrate.user.userId;
+// const userId = 'Stalkcomrade:github'
+// SOLVED: Promise for userID? - works without workarounds
+const userId = webstrate.user.userId // const userId = 'Stalkcomrade:github'
+console.log("WS User ID:")
+console.log(userId)
+
+// SOLVED: identify server
+
+const getServer = () =&gt; {
+
+    var serverAddress;
+
+    if (window.location.href.indexOf("webstrates.r2.enst.fr") &gt; -1) {
+        serverAddress = 'https://webstrates.r2.enst.fr/'
+    } else {
+        serverAddress = 'https://webstrates.cs.au.dk/'
+    }
+
+    return serverAddress
+}
+
+const checkServer = function(serverAddress) {
+
+    var wsLocal;
+
+    if (serverAddress === "https://webstrates.cs.au.dk/") {
+        wsLocal = new WebSocket('wss://webstrates.cs.au.dk/_monitor')
+    } else {
+        wsLocal = new WebSocket('wss://webstrates.r2.enst.fr/_monitor')
+    }
+
+    return wsLocal
+}
+
+const serverAddress = window.serverAddress = getServer()
+const ws = checkServer(serverAddress)
+
+// SOLVED: redirect ti github for auth
+// TODO: ask for redirection back to ws (backend?)
+
+var watchAuth = function(serverAddress) {
+    serverAddress === "https://webstrates.cs.au.dk/" &amp;&amp; window.location.replace("https://webstrates.cs.au.dk/auth/github")
+}
+
+userId === "anonymous:" &amp;&amp; watchAuth()
+
+// const ws = new WebSocket('wss://webstrates.cs.au.dk/_monitor');
+// Generate random string to be used as tokens.
+const randomString = () =&gt; Math.random().toString(36).substring(2);
+
+// Map from tokens to promises.
+const promises = new Map();
+
+// Every 25 second or so we send a ping message to keep the connection alive.
+let interval;
+ws.onopen = (e) =&gt; {
+    setInterval(() =&gt; {
+        sendMsg({
+            type: 'ping'
+        });
+    }, 25 * 1000);
+};
+
+ws.onclose = (e) =&gt; {
+    clearInterval(interval);
+};
+
+// This is where we handle incoming messages!
+ws.onmessage = (msg) =&gt; {
+    msg = JSON.parse(msg.data);
+
+    // We set a token on messages we expect an answer to. This token is included in the answer we get
+    // from the server. Or it should be. If it isn't there, we don't know what the message is an
+    // answer to, so we toss it out.
+    if (!msg.token) {
+        console.error('Received msg without token', msg);
+        return;
+    }
+
+    // promises is a map from tokens to callbacks. If there's no callback associated with the token we
+    // got back, we can't do anything with the answer, so we toss it out.
+    if (!promises.has(msg.token)) {
+        console.error('Found no callback for token', msg);
+        return;
+    }
+
+    // Finally! If there's a token and it belongs to a callback, we call the callback with the answer
+    // from the server.
+    const [resolve, reject] = promises.get(msg.token);
+    promises.delete(msg.token);
+    resolve(msg.payload);
+};
+
+const sendMsg = (msg) =&gt; {
+    switch (ws.readyState) {
+
+        // If the websocket is about to connect, we wait 100 ms and try again.
+        case WebSocket.CONNECTING:
+            {
+                setTimeout(sendMsg, 100, msg);
+                break;
+            }
+
+            // If the websocket is open and ready to use, we send the message as requested.
+        case WebSocket.OPEN:
+            {
+                ws.send(JSON.stringify(msg));
+                break;
+            }
+
+            // If the websocket is closing or closed, we throw an error.
+        case WebSocket.CLOSING:
+        case WebSocket.CLOSED:
+            {
+                throw new Error('Websocket closing');
+            }
+
+    }
+};
+
+const dataFetcher = (type, options) =&gt; new Promise((resolve, reject) =&gt; {
+    const token = randomString();
+    promises.set(token, [resolve, reject]);
+    sendMsg({
+        type,
+        token,
+        options,
+        userId
+    });
+});
+
+exports = Object.assign(exports, {dataFetcher,
+                                  checkServer, getServer, watchAuth,
+                                  userId, serverAdress, ws
+                                 })</pre></div><div class="paragraph code-paragraph" data-id="c6pcPaAE" last-execution-state="success"><pre data-type="content" type="text/javascript">// console.log(window)
+// window.location
+const tt = require("#data-fetcher")
+console.log(tt)</pre></div><div class="paragraph code-paragraph collapsed" data-id="pYa4NLfT" name="vuex-store"><pre data-type="content" type="text/javascript" id="vuex-store"> const store = new Vuex.Store({
+        state: {
+            listWebstrates: '', // INFO: list of webstrates
+            contextMenuObject: '', // INFO: transfering data 
+            contextMenuContext: '', // INFO: using this on order to pop-up approp version
+            currentGraphData: '',
+            currentNode: '',
+            currentNodeInitial: '',
+            currentNodeLatest: '',
+            // webstrateId: 'hungry-cat-75',
+            webstrateId: 'dry-goat-98',
+            sessionObject: '',
+            sliderVersions: [1, 2], // INFO: versioning
+        },
+        getters: {
+            // FIXME:
+            currentNodeGet: state =&gt; {
+                return state.currentNode
+            },
+            initialVersionGet: state =&gt; {
+                return state.sliderVersions[0]
+            },
+            latestVersionGet: state =&gt; {
+                return state.sliderVersions[1]
+            },
+            sliderVersionsFullGet: state =&gt; {
+                // return [state.sliderVersions[0], state.state.sliderVersions[1]]
+                return [getters.initialVersionGet, getters.latestVersionGet]
+            },
+        },
+        mutations: {
+            changeGraphData(state, payload) {
+                state.GraphData = payload
+            },
+            changeWebstratesList(state, payload) {
+                state.listWebstrates = payload
+            },
+            changeContextMenuContext(state, payload) {
+                state.contextMenuContext = payload
+            },
+            changeContextMenuObject(state, payload) {
+                state.contextMenuObject = payload
+            },
+            // FIXME: legacy
+            changeCurrentNode(state, payload) {
+                state.currentNode = payload
+            },
+            changeCurrentNodeInitial(state, payload) {
+                state.currentNodeInitial = payload
+            },
+            changeCurrentNodeLatest(state, payload) {
+                state.currentNodeLatest = payload
+            },
+            changeCurrentSessionObject(state, payload) {
+                state.sessionObject = payload
+            },
+            changeCurrentWebstrateId(state, payload) {
+                state.webstrateId = payload
+            },
+            changeSliderVersions(state, payload) { // INFO: change both versions
+                state.sliderVersions = payload
+            },
+            changeInitialVersion(state, payload) { // INFO: change intial version
+                state.sliderVersions[0] = payload
+            },
+            changeLatestVersion(state, payload) { // INFO: change intial version
+                state.sliderVersions[1] = payload
+            }
+
+        },
+        actions: {
+            async getWebstratesList(context) {
+
+                if (this.$store.state.listWebstrates === '') {
+
+                    var inputDate = new Date()
+
+                    var month = typeof inputDate === "undefined" ?
+                        this.monthProp :
+                        inputDate.getMonth()
+                    var year = typeof inputDate === "undefined" ?
+                        this.yearProp :
+                        inputDate.getFullYear()
+                    var date = typeof inputDate === "undefined" ?
+                        new Date(this.year, this.month - 1) :
+                        inputDate
+                    var maxWebstrates = 50
+
+                    var days = await dataFetcher('month', {
+                        month,
+                        year,
+                        maxWebstrates
+                    })
+
+
+                    let webstrateIds = new Set();
+
+                    Object.values(days).forEach(day =&gt; {
+                        Object.keys(day).forEach(webstrateId =&gt; {
+                            webstrateIds.add(webstrateId)
+                        })
+                    })
+
+                    webstrateIds = Array.from(webstrateIds).sort()
+
+                    console.log('List of Webstrates Ids is Fetched Successfully via Vuex Store', webstrateIds)
+                    context.commit('changeWebstratesList', webstrateIds)
+
+                } else {
+                    console.log("No need to update webstrates list")
+                }
+
+
+            }
+        }
+    })
+ 
+ exports = Object.assign(exports, {store})</pre></div><div class="paragraph code-paragraph collapsed" data-id="UHjYETGT" name="network-mixin-upd"><pre data-type="content" type="text/javascript" id="network-mixin-upd">const networkUpd = Vue.mixin({
+    data: () =&gt; ({
+        finalHtml: '',
+        htmlObjectReady: false,
+        htmlObject: '',
+        currentInnerText: '',
+        currentVersionSpan: '',
+        currentVersionSentences: ["test", "test"],
+        svg: "",
+        rootInstance: '',
+        rootInstanceLatest: '',
+        gLink: "",
+        gNode: "",
+        d3Data: [],
+        d3DataLatest: [],
+        d3Object: {},
+        tree: '',
+        diagonal: '',
+        htmlStringLatest: '',
+        dx: 10,
+        width: 900,
+        margin: {
+            top: 10,
+            right: 120,
+            bottom: 10,
+            left: 40
+        }
+    }),
+    computed: {
+        dy() {
+            return this.width / 6
+        },
+        viewBoxConst() {
+            return [-this.margin.left * 20, -this.margin.top, this.width, this.dx]
+        },
+        viewBox() {
+            return [-this.margin.left, -this.margin.top, this.width, this.dx]
+        },
+        svgViewBox() {
+            return [this.margin.left, -this.margin.top, this.width, this.dx + 200]
+        }
+    },
+    methods: {
+        onChildUpdate(newValue) { // INFO: it is used to catch htmls from timeline component
+            console.dir("Updated")
+            this.htmlString = newValue[0] // SOLVED: make a parent listen to child instead of using global scopes
+            this.htmlObject = new DOMParser().parseFromString(this.htmlString, "text/html")
+            this.d3Data = this.init()
+        },
+        /**
+         * use this to pointer to dom elements
+         * 
+         * @param {string} version - whether to return selectors for initial vs. latest dom tree
+         * @param {boolean} legacy - indicate wheather select second tree, backward compatability, eliminate later
+         * @return {array} domSelectors - object with selectors per each element
+         */
+        getSelectors: function(legacy, version) {
+
+            var domSelectors = {}
+
+            if (legacy === true) {
+
+                this.svg = d3.select("#svgMain")
+                this.gLink = d3.select("#gLink")
+                this.gNode = d3.select("#gNode")
+
+            } else if (version === "initial") {
+
+                domSelectors.svg = d3.select("#svgMain")
+                domSelectors.gLink = d3.select("#gLink")
+                domSelectors.gNode = d3.select("#gNode")
+
+            } else {
+
+                domSelectors.svg = d3.select("#svgMainLatest")
+                domSelectors.gLink = d3.select("#gLinkLatest")
+                domSelectors.gNode = d3.select("#gNodeLatest")
+
+            }
+
+            return domSelectors
+        },
+
+        changeCurrent: function(innerText) {
+            this.currentInnerText = `${innerText}`
+        },
+
+        handler: function(e) {
+            e.preventDefault();
+        },
+
+        // get children from parentnoted
+        getLevelNodes: function(node) {
+            return Array.from(node.parentNode.children)
+        },
+
+        // get index of child
+        getChildIndex: function(node) {
+            return this.getLevelNodes(node).indexOf(node)
+        },
+
+        tagNodeName: function(node) {
+            node.innerHTML = node.nodeName + node.innerHTML
+        },
+
+        clearInside: function(node) {},
+        handleImage: function(node) {
+            if (node.nodeName === 'IMG') {
+                node.src = ''
+                node.alt = 'IMG'
+            }
+        },
+        // recurcive functions are awesome
+        walk: function(node, cb) {
+            cb(node)
+            if (node.children.length) {
+                this.walk(node.children[0], cb)
+            }
+            if (node.nextElementSibling) {
+                this.walk(node.nextElementSibling, cb)
+            }
+        },
+
+        /**
+         * 
+         * @param {string} type - whether delete children of initial or latest tree
+         */
+        removeChildren: function(type) {
+
+            var myNode;
+
+            if (type === "initial") {
+
+                myNode = document.getElementById("gLink")
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+
+                myNode = document.getElementById("gNode")
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+
+            } else if (type === "latest") {
+
+                myNode = document.getElementById("gLinkLatest")
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+
+                myNode = document.getElementById("gNodeLatest")
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+            } else { // INFO: used for compatability with old functions
+
+                myNode = document.getElementById("gLink")
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+
+                myNode = document.getElementById("gNode")
+                while (myNode.firstChild) {
+                    myNode.removeChild(myNode.firstChild);
+                }
+
+            }
+
+        },
+        /**
+         * used to build filtered dom represenation
+         * @param {any} input
+         * @param {any} attributeName
+         * @param {any} attributeValue
+         * @param {boolean} includeNot - not include elements with current attributes
+         * @param {any} filterArray    - array of of objects {attributeName, attributeValue}
+         */
+        sqEnhanced: function(input, attributeName, attributeValue, includeNot, filterArray) {
+
+            // var fltArray = []
+            // fltArray.name = []
+            // fltArray.value = []
+            // filterArray.forEach(el =&gt; {
+            //     fltArray.name = el.name
+            //     fltArray.value = el.value
+            // })
+            // att.nodeName
+
+            if (includeNot === true) {
+                console.log(input)
+                input = input[0].children
+                // input = input[0].children[0].children[1].children[0] // .children
+            }
+
+            var target = [], // INFO: local-global scope
+                flag = false,
+                flagCS = false
+
+            for (var i = 0, len = input.length; i &lt; len; ++i) {
+
+                flag = false
+                var item = input[i]
+                var children = {}
+
+                for (var att, k = 0, atts = item.attributes, n = atts.length; k &lt; n; k++) {
+
+                    att = atts[k];
+
+                    // INFO: Used for Codestrates Filtering
+                    if (includeNot === true &amp;&amp;
+                        att.nodeName === attributeName &amp;&amp; att.nodeValue === attributeValue) {
+                        // fltArray.name.indexOf(att.nodeName) &gt; -1 &amp;&amp; fltArray.value.indexOf(att.attributeValue) === -1) {
+
+                        flagCS = true
+                        flag = true
+                        var contObj = {};
+
+                        if (typeof att !== undefined) {
+                            if (att.nodeName !== "children") {
+                                contObj[att.nodeName] = att.nodeValue
+                            }
+                        }
+
+                    } else if (att.nodeName === attributeName &amp;&amp; att.nodeValue === attributeValue) { // INFO: used for webstrate
+
+                        flag = true
+                        var contObj = {};
+
+                        if (typeof att !== undefined) {
+                            if (att.nodeName !== "children") {
+                                contObj[att.nodeName] = att.nodeValue
+                            }
+                        }
+                    }
+                }
+
+                if (flag === true || flagCS === true) {
+
+                    Object.assign(children, contObj)
+
+                    children.value = item
+                    children.parent = item.parentElement.getAttribute("__wid")
+                    children.innerText = item.innerText
+                }
+
+                children.children = item.children ?
+                    this.sq(item.children) :
+                    "No Children"
+
+                if (flag === true || flagCS === true) {
+                    target.push(children)
+                }
+
+            }
+
+            console.log("filter target", target)
+            return target
+        },
+
+        /**
+         * parse node attributes
+         * @param {any} input
+         */
+        sq: function(input) {
+
+            var target = [] // INFO: local-global scope
+            // var children = []
+            // var children = {}
+
+            for (var i = 0, len = input.length; i &lt; len; ++i) {
+                var item = input[i]
+
+                var children = {}
+
+                for (var att, k = 0, atts = item.attributes, n = atts.length; k &lt; n; k++) {
+
+                    var contObj = {};
+                    att = atts[k];
+
+                    if (typeof att !== undefined) {
+
+                        // SOLVED: consider children
+                        // TODO: consider search for reflected nodes
+                        if (att.nodeName !== "children") {
+
+                            if (att.nodeName === "__wid") {
+                                contObj["name"] = att.nodeValue
+                            } else {
+                                contObj[att.nodeName] = att.nodeValue
+                            }
+
+                        }
+                    }
+                }
+
+
+                Object.assign(children, contObj)
+
+                children.value = item
+                children.parent = item.parentElement.getAttribute("__wid")
+                children.innerText = item.innerText
+                children.children = item.children ?
+                    this.sq(item.children) :
+                    "No Children"
+
+                target.push(children)
+            }
+
+            return target
+        },
+
+        // SOLVED: changing root from computed to function
+        /**
+         * creates structure for dom-tree
+         * @param {any} data
+         */
+        root: function(data) {
+            var hierarchyTemp = d3.hierarchy(data)
+            hierarchyTemp.x0 = this.dy / 2 + 500
+            hierarchyTemp.y0 = 0 + 500
+            hierarchyTemp.descendants().forEach((d, i) =&gt; {
+                d.name = d.data.name
+                d.class = d.data.class
+                d.id = i
+                d._alignment = d.data.alignment;
+                d._children = d.children
+                try {
+                    if (d.depth &amp;&amp; d.data.name.length !== 7) d.children = null
+                } catch (err) {
+                    console.error("No d.name.length in Hierarchy")
+                } finally {}
+
+            })
+            return hierarchyTemp
+        },
+
+        /**
+         * use this for creating filtered tree
+         * @param {any} input
+         * @param {any} type
+         * @param {any} mode - copy vs transclusion mode
+         * @param {object} filter - attributeName and attributeValue to search to
+         * @param {boolean} codestrateMode - attributeName and attributeValue to search to
+         */
+        initEnhanced: function(input, type, mode, filter, codestrateMode) {
+
+            // class section vissible
+
+            console.log(input)
+            var $el;
+
+            // INFO: codestrate mode
+            if (codestrateMode === true) {
+
+                // var filterArray = [{"class", ""}, {"class", ""}]
+
+                $el = input.getElementsByTagName("BODY")[0]
+                return this.sqEnhanced($el.children, filter.attributeName, filter.attributeValue, true)
+
+            }
+
+            // INFO: ordinary call
+            if (typeof type !== "undefined") {
+
+                return mode(input)
+
+            } else {
+
+                $el = input.getElementsByTagName("BODY")[0]
+                return this.sqEnhanced($el.children, filter.attributeName, filter.attributeValue)
+
+            }
+        },
+
+
+        // INFO: copy or transclusion are local functions
+        /**
+         * 
+         * @param {any} input - object for dom tree creation
+         * @param {str} type 
+         * @param {string} mode - used for building tree in case of copies/transclusions
+         */
+        init: function(input, type, mode) {
+
+            if (typeof type !== "undefined") {
+
+                return mode(input)
+
+            } else {
+
+                if (typeof input !== "undefined") {
+                    console.dir(input)
+                    var $el = input.getElementsByTagName("BODY")[0]
+                    var el = $el.children[0]
+                    window.el = el
+                    // INFO: if current webstrate or el undefined (html body) is undefined, used precestor object
+                    if (this.$store.state.webstrateId === "dry-goat-98" || typeof el === undefined) {
+                        // debugger
+                        return this.sq($el.children)
+                    } else {
+                        return this.sq(el.children)
+                    }
+
+
+                } else {
+
+                    // console.dir("init starts")
+                    var $el = this.htmlObject.getElementsByTagName("BODY")[0]
+                    window.el = $el.children[0]
+                    return this.sq(window.el.children)
+
+                }
+            }
+        },
+
+        checkNested: function(obj /*, level1, level2, ... levelN*/ ) {
+            var args = Array.prototype.slice.call(arguments, 1);
+            for (var i = 0; i &lt; args.length; i++) {
+                if (!obj || !obj.hasOwnProperty(args[i])) {
+                    return false;
+                }
+                obj = obj[args[i]];
+            }
+            return true;
+        },
+
+        // TODO: optimise search by including type of the alignment
+        // TODO: check whether this is working
+        // if differs from initial - do not go into array
+        findSelectedInList: function(selected, list, propertyName, valueFilter) {
+
+            Object.values(list).some((currentItem) =&gt; {
+
+                // // INFO: using this in order to parse 1-level svg elements
+                if (this.checkNested(currentItem, 'data', propertyName)) {
+                    currentItem.data[propertyName] === valueFilter ?
+                        selected.push(currentItem) // ? selected = currentItem.__data__.data.name
+                        :
+                        (typeof currentItem._children != "undefined" &amp;&amp; this.findSelectedInList(selected, currentItem._children, propertyName, valueFilter))
+                }
+            })
+            return selected
+        },
+
+
+        /**
+         * defacto, builds dom-tree
+         * @param {object} source - data structure for tree building
+         * @param {string} alignment - direction of transtion - left or right
+         * @param {object} selectors - object with selectors
+         */
+        update: function(source, selectors) { // INFO: update now has input for different graph alignment
+            // SOLVED: selectors on input
+            // SOLVED: root is not calculated
+
+            // SOLVED: const for selectors
+            // SOLVED: eliminate this.diagonal and this.rootInstance and this.tree
+
+            // INFO:   !!! CRITICAL
+            // SOLVED: Messed up source and root
+            // SOLVED: one of the variables 
+            // SOLVED: this.rootInstance
+
+            var self = this
+
+            // INFO: this works assuming the premise that latest is always rendered on the left side
+            // TODO:
+            const root = this.rootInstance
+            root.x0 = this.dy / 2
+            root.y0 = 0
+
+
+            const alignment = "right"
+            // const root = source
+            // const root = alignment === "left" ? this.rootInstanceLatest  : this.rootInstance
+
+            // INFO: Checking, which version of diagonal fun is used
+            // TODO: 
+            // SOLVED: this.diagonal
+            // const diagonal = this.layoutLinks()
+            // const diagonal = this.diagonalS
+            const diagonal = d3.linkHorizontal()
+                .x(d =&gt; {
+                    return d._alignment === alignment ? d.y : -d.y
+                })
+                .y(d =&gt; {
+                    return d.x
+                })
+
+            const duration = d3.event &amp;&amp; d3.event.altKey ? 2500 : 250;
+            const nodes = root.descendants().reverse()
+            const links = root.links()
+
+            // SOLVED: tree
+            const tree = d3.tree().nodeSize([this.dx, this.dy])
+            tree(root)
+
+
+            let left = root
+            let right = root
+
+            root.eachBefore(node =&gt; {
+
+                if (node.x &lt; left.x) left = node;
+                if (node.x &gt; right.x) right = node
+
+            });
+
+            const height = right.x - left.x + this.margin.top + this.margin.bottom
+
+
+
+            selectors.svg
+                .call(d3.zoom().on("zoom", () =&gt; {
+
+                    let t = d3.event.transform;
+
+                    t.x = t.x &lt; this.viewBoxConst[0] ? this.viewBoxConst[0] : t.x;
+                    t.x = t.x &gt; this.viewBoxConst[2] ? this.viewBoxConst[2] : t.x;
+                    t.y = t.y &lt; this.viewBoxConst[1] ? this.viewBoxConst[1] : t.y;
+                    t.y = t.y &gt; this.viewBoxConst[3] ? this.viewBoxConst[3] : t.y;
+
+                    if (t.k === 1) t.x = t.y = 0;
+                    console.log(t.x, t.y)
+
+                    const vb = [t.x, t.y, this.viewBoxConst[2] * t.k, this.viewBoxConst[3] * t.k];
+
+
+                    selectors.svg.attr("viewBox", vb.join(' '));
+
+                    // selectors.svg.attr('viewBox', newViewBox);
+
+
+                }))
+            // .call(d3.zoom().on("zoom", function() {
+            //     selectors.svg.attr("transform", d3.event.transform)
+            // }))
+
+            // INFO: compute viewBox params here
+            // TODO: fix global alignment
+            // let viewBoxInst = alignment === "left" ? -this.margin.left : -this.margin.left * 20
+            // let viewBoxInst = -this.margin.left * 20
+
+            // const transition = this.svg
+            const transition = selectors.svg
+                .transition()
+                .duration(duration)
+                .attr("height", height)
+                .attr("viewBox", [-this.margin.left, // TODO: from computed
+                    left.x - this.margin.top,
+                    this.width,
+                    height + 400
+                ])
+                // .tween("resize", window.ResizeObserver ? null : () =&gt; () =&gt; self.svg
+                .tween("resize", window.ResizeObserver ? null : () =&gt; () =&gt; selectors.svg
+                    .dispatch("toggle"))
+
+            // Update the nodes…
+            const node = selectors.gNode.selectAll("g")
+                .data(nodes, d =&gt; d.id);
+
+            // Enter any new nodes at the parent's previous position.
+            // TODO: check whether d._alignment is available
+            // TODO: fix store commit for diff component
+            // TODO: fix store commit for context menu
+            const nodeEnter = node.enter().append("g")
+                .attr("transform", d =&gt; d._alignment === alignment ?
+                    `translate(${source.y0},${source.x0})` :
+                    `translate(${source.y0 - 2*source.y0},${source.x0})`)
+                .attr("fill-opacity", 0)
+                .attr("stroke-opacity", 0)
+                .attr("id", d =&gt; d.id) // INFO: binding ID for selection
+                .on("click", (d, i, nodes) =&gt; {
+
+                    this.$store.commit('changeCurrentNode', d.data.name)
+                    console.log(d)
+
+
+                    let selected = []
+                    var re = self.findSelectedInList(selected, root.children, "name", d.data.name)
+
+                    // TODO: ??
+                    re.forEach((el) =&gt; {
+                        el.children = el.children ? null : el._children;
+                        self.update(el, selectors)
+
+                        // store.commit('changeCurrentNode', d.data.name)
+
+                        // el._alignment === "left" ?
+                        // store.commit('changeCurrentNodeInitial', d.data.name) :
+                        // store.commit('changeCurrentNodeLatest', d.data.name)
+
+                        // this.currentInnerText = d.data.innerText
+                        // console.dir(d.data.innerText)
+
+                    })
+
+
+                    this.codestrateModeFlag === true &amp;&amp; this.codestrateMode()
+
+
+
+                })
+                // TODO: 
+                .on("contextmenu", function(d, i) { // INFO: binding listeners to nodes
+                    // d3.event.preventDefault();
+                    // if (typeof self !== "undefined"){
+                    // self.$refs.ct.$refs.menu.open(self.$event, d.data.value)
+                    // }
+                })
+
+            nodeEnter.append("circle")
+                .attr("r", 2.5)
+                .attr("fill", d =&gt; d._children ? "#555" : "#999")
+
+            nodeEnter.append("text")
+                .attr("dy", "0.31em")
+                .attr("x", d =&gt; d._children ? -6 : 6)
+                .attr("text-anchor", d =&gt; d._children ? "end" : "start")
+                .text(d =&gt; d.data.name)
+                .clone(true).lower()
+                .attr("stroke-linejoin", "round")
+                .attr("stroke-width", 3)
+
+            // TODO: check prop name
+            // Transition nodes to their new position.
+            const nodeUpdate = node.merge(nodeEnter).transition(transition)
+                .attr("transform", d =&gt; d._alignment === alignment ?
+                    `translate(${d.y},${d.x})` :
+                    `translate(${d.y - 2*d.y},${d.x})`)
+                .attr("fill-opacity", 1)
+                .attr("stroke-opacity", 1);
+
+            // TODO: check prop name
+            // Transition exiting nodes to the parent's new position.
+            const nodeExit = node.exit().transition(transition).remove()
+                .attr("transform", d =&gt; d._alignment === alignment ?
+                    `translate(${source.y},${source.x})` :
+                    `translate(${source.y - 2*source.y},${source.x})`)
+                .attr("fill-opacity", 0)
+                .attr("stroke-opacity", 0);
+
+            // Update the links…
+            const link = selectors.gLink.selectAll("path")
+                .data(links, d =&gt; d.target.id)
+
+            // Enter any new links at the parent's previous position.
+            const linkEnter = link.enter().append("path")
+                .attr("d", d =&gt; {
+                    const o = {
+                        x: source.x0,
+                        y: source.y0
+                    };
+                    return diagonal({
+                        source: o,
+                        target: o
+                    });
+                });
+
+            // Transition links to their new position.
+            link.merge(linkEnter).transition(transition)
+                .attr("d", diagonal)
+
+            // Transition exiting nodes to the parent's new position.
+            link.exit().transition(transition).remove()
+                .attr("d", d =&gt; {
+                    const o = {
+                        x: source.x,
+                        y: source.y
+                    };
+                    return diagonal({
+                        source: o,
+                        target: o
+                    });
+                });
+
+            // Stash the old positions for transition.
+            root.eachBefore(d =&gt; {
+                d.x0 = d.x;
+                d.y0 = d.y;
+            });
+
+        },
+
+        /**
+         * TODO: check for commented transclusions
+         * extracting transcluded webstrateIds using regExps
+         * @param {any} input
+         */
+        extractSummary: function(input) {
+
+            var regSrc = /\&lt;iframe.*?src="\/(.*?)\/*?".*?&lt;\/iframe\&gt;/gi
+            var regWid = /\&lt;iframe.*?wid="(.*?)".*?&lt;\/iframe\&gt;/gi
+
+            try {
+
+                var src = (input.match(regSrc) || []).map(e =&gt; {
+                    return {
+                        src: e.replace(regSrc, '$1'),
+                    }
+                })
+                console.log("src = ", src);
+
+                var wid = (input.match(regWid) || []).map(e =&gt; {
+                    return {
+                        wid: e.replace(regWid, '$1'),
+                    }
+                })
+
+                var tt = wid.map((el, index) =&gt; {
+                    return {
+                        ...el,
+                        src: src[index].src
+                    }
+                })
+
+                // INFO: supporting legacy code
+                if (this.$route.path === "/transclusion1") {
+                    return tt
+                } else {
+
+                    return {
+                        tt: tt,
+                        src: src
+                    }
+
+                }
+
+            } catch (err) {
+                return null
+            }
+        },
+
+        /**
+         * used for recursive finding of transclusions 
+         * v1 with this.getHtmlsPerSessionMixin is used webstrates API, searching for static page
+         * this means, that is transclusions are created programmatically or exist under &lt;transient&gt; tag
+         * it will fail to find them
+         * v2 read transcluded DOM to avoid this
+         * if statement in the begining used to support both uses
+         * @param {any} input
+         */
+        sqt: async function(input) {
+
+                console.dir("Transclusion")
+
+                var prs;
+
+                if (this.$route.path === "/transclusion1") {
+
+                    var htmlParsed = await this.getHtmlsPerSessionMixin(input, undefined, undefined, true)
+                    prs = this.extractSummary(htmlParsed)
+
+                } else {
+
+                    prs = this.extractSummary(input)
+
+                }
+
+                var target = [],
+                    children = []
+
+                if (prs !== null &amp;&amp; typeof prs !== "undefined") {
+
+                    for (var i = 0, len = prs.length; i &lt; len; ++i) {
+
+                        var el = prs[i]
+
+                        children = {
+                            value: el.src,
+                            name: el.wid,
+                            children: (typeof el.src !== "undefined" ? await this.sqt(el.src) : "no transclusions")
+                        }
+
+                        target.push(children)
+                    }
+                } else {
+
+                    console.dir("else statement")
+
+                }
+                return target
+
+            },
+
+
+    }
+})
+
+exports = Object.assign(exports, {networkUpd})</pre></div><div class="paragraph code-paragraph collapsed" data-id="rhrNWxhp" name="data-fetch-mixin" last-execution-state="success"><pre data-type="content" type="text/javascript" id="data-fetch-mixin">const dataFetchMixin = Vue.mixin({
+    props: ["monthProp", "yearProp", "maxWebstratesProp"],
+    data: () =&gt; ({
+        selectOptions: '',
+        month: '',
+        year: '',
+        maxWebstrates: '',
+        usersPerWs: ''
+    }),
+    methods: {
+
+        fetchTags: async function(selected) {
+                let tags = await fetch(window.serverAddress + selected + "/?tags").then(results =&gt; results.json())
+                return tags
+            },
+            // SOLVED: range of version instead of a single version
+            fetchRangeOfTags: async function(selected) {
+                    let tags = await fetch(window.serverAddress + selected + "/?tags").then(results =&gt; results.json())
+                    let vSession = []
+                    tags.forEach(el =&gt; vSession.push(el.v))
+
+                    return vSession
+                },
+                // SOLVED: userGeneratedTags
+                // SOLVED: automaticTags - session labels
+                filterTags: function(tags) {
+                    var sessions = tags.filter((el) =&gt; {
+                            return el.label.indexOf("Session of ") &gt;= 0
+                        }),
+                        custom = tags.filter((el) =&gt; {
+                            return el.label.indexOf("Session of ") &lt; 0
+                        })
+                    return {
+                        sessions: sessions,
+                        custom: custom
+                    }
+                },
+                // TOOD: range of version instead of a single version
+                lastVersion: async function(selected) {
+                        var versionmax = await fetch(window.serverAddress + selected + "/?v")
+                            .then(body =&gt; body.json())
+                        return versionmax.version
+                    },
+                    /**
+                     * 
+                     * @param {any} selected - webstrate Id
+                     * @param {any} initialVersion - first version to compare
+                     * @param {any} finalVersion - second version to compare
+                     * @param {boolean} snapshot - whether fetch only last version
+                     * @param {numeric} snapshotCustom - fetch input version
+                     */
+                    getHtmlsPerSessionMixin: async function(selected, initialVersion, finalVersion, snapshot, snapshotCustom) {
+
+                            console.log("SELCTED: ", selected)
+
+                            // let tmp = await fetch("https://webstrates.cs.au.dk/horrible-dingo-75/")
+                            // let tmp1 = await tmp.text()
+                            // window.tmp2 = new DOMParser().parseFromString(tmp1, "text/html")
+
+                            // console.log("tmp2!!!! = ", window.tmp2);
+
+                            // let tmpR = await fetch("https://webstrates.cs.au.dk/horrible-dingo-75/3000/?raw")
+                            // let tmpR1 = await tmpR.text()
+                            // window.tmpR2 = new DOMParser().parseFromString(tmpR1, "text/html")
+                            // console.log("tmpR2!!!! = ", tmp2);
+
+                            // FIXME: fetching range of possible versions for the webstrate
+                            // INFO: currently last one is fetched
+                            // INFO: use default value if no selected id is specified
+                            let wsId = typeof selected === "undefined" ? "wonderful-newt-54" : selected
+
+                            // INFO: use last version available if no is specified
+
+                            // console.log(fetch(window.serverAddress + wsId + "/?v"))
+                            var versionmaxTmp = await fetch(window.serverAddress + wsId + "/?v")
+                            // .then(body =&gt; body.json())
+                            // var versionmax = await versionmaxTmp.json()
+                            var versionmax = await versionmaxTmp.json()
+
+                            let version = typeof versionmax === "undefined" ? 1 : versionmax.version
+
+                            console.dir("VERSION INPUT")
+
+                            if (snapshot === true &amp;&amp; typeof snapshotCustom !== "undefined" &amp;&amp; snapshotCustom !== null) {
+
+                                let webpageInitial = await fetch(window.serverAddress + wsId + "/" + snapshotCustom + "/?raw")
+                                let htmlResultInitial = await webpageInitial.text()
+
+
+
+                                console.log('html is fetched successfully')
+
+                                return htmlResultInitial
+
+                            } else if (snapshot === true) {
+
+                                console.log("SINGLE VERSION inside SESSION FETCHING")
+
+                                let webpageInitial = await fetch(window.serverAddress + wsId + "/" + version + "/?raw")
+                                let htmlResultInitial = await webpageInitial.text()
+                                console.log('html is fetched successfully')
+
+                                return htmlResultInitial
+
+                            } else {
+
+                                console.log("MULTIPLE VERSION inside SESSION FETCHING")
+
+                                // TODO: check whether versions are correct and fetched in the right time
+
+                                // SOLVED: transform into parameters
+                                let numberInitial = typeof initialVersion === "undefined" ? 1 : initialVersion
+                                let numberLast = typeof finalVersion === "undefined" ? 2 : finalVersion // INFO: if undefined, simply last version
+
+                                let webpageInitial = await fetch(window.serverAddress + wsId + "/" + numberInitial + "/?raw")
+                                // debugger
+                                let htmlResultInitial = await webpageInitial.text()
+                                let webpageInitialJson = await fetch(window.serverAddress + wsId + "/" + numberInitial + "/?json")
+                                let htmlResultInitialJson = await webpageInitialJson.text()
+
+                                let webpageLast = await fetch(window.serverAddress + wsId + "/" + numberLast + "/?raw")
+                                let htmlResultLast = await webpageLast.text()
+                                let webpageLastJson = await fetch(window.serverAddress + wsId + "/" + numberLast + "/?json")
+                                let htmlResultLastJson = await webpageLastJson.text()
+
+
+
+                                let results = await Promise.all([
+                                    htmlResultInitial,
+                                    htmlResultLast,
+                                    htmlResultInitialJson,
+                                    htmlResultLastJson
+                                ])
+
+                                this.$emit('update', results) // INFO: used in timeline-component.js
+
+                                return [
+                                    results[0],
+                                    results[1]
+                                ]
+
+                            }
+
+                        },
+
+                        fetchActivityMixin: function(webstrateIdInst) {
+
+                            const toDate = new Date()
+                            const fromDate = new Date()
+                            fromDate.setDate(fromDate.getDate() - 30)
+
+                            return dataFetcher('activities', {
+                                webstrateId: webstrateIdInst,
+                                toDate,
+                                fromDate
+                            })
+                        },
+                        // TODO: look for it's use in components
+                        // INFO: if there is no input, date/month is calculated automatically
+                        // If there isg, use input value
+                        fetchDaysOverview: function(inputDate) {
+
+                            this.month = month = typeof inputDate === "undefined" ? this.monthProp : inputDate.getMonth()
+                            this.year = year = typeof inputDate === "undefined" ? this.yearProp : inputDate.getFullYear()
+                            this.date = typeof inputDate === "undefined" ? new Date(this.year, this.month - 1) : inputDate
+                            this.maxWebstrates = maxWebstrates = this.maxWebstratesProp
+
+                            console.log("DAY MIXIN")
+                            console.log(this.date.getDate())
+                            console.log("MONTH MIXIN")
+                            console.log(this.month)
+                            console.log("YEAR MIXIN")
+                            console.log(this.year)
+
+
+                            return dataFetcher('month', {
+                                month,
+                                year,
+                                maxWebstrates
+                            })
+
+                        },
+                        getToday: function() {
+                            return new Date()
+                        },
+                        monthBack: function(date) {
+                            return date.setMonth(date.getMonth() - 1)
+                        },
+                        monthForward: function(date) {
+                            return date.setMonth(date.getMonth() + 1)
+                        },
+                        // FIXME: remove this.versioningRaw
+                        getOpsJsonMixin: function(input) {
+                            var current = input !== "undefined" ? input : this.selected
+                            return fetch(window.serverAddress + current + "/?ops")
+                                .then((html) =&gt; {
+                                    return html.json()
+                                })
+                                .then((body) =&gt; {
+                                    console.log('Fetched:\n', current)
+                                    this.versioningRaw = body
+                                    return body
+                                })
+                        }
+    }
+})
+
+exports = Object.assign(exports, {dataFetchMixin})</pre></div><div class="paragraph code-paragraph collapsed" data-id="D484utcH" name="data-objects-creator"><pre data-type="content" type="text/javascript" id="data-objects-creator">const dataObjectsCreator = Vue.mixin({
+    methods: {
+        listOfWebstrates: function(days) { // INFO: resulted fetched promise should be days object
+
+            let webstrateIds = new Set();
+
+            Object.values(days).forEach(day =&gt; {
+                Object.keys(day).forEach(webstrateId =&gt; {
+                    webstrateIds.add(webstrateId)
+                })
+            })
+
+            webstrateIds = Array.from(webstrateIds).sort()
+            console.log('List of Webstrates Ids is Fetched Successfully')
+
+            return webstrateIds
+    },
+
+    /**
+     * 
+     * @param {any} fetchActivityMixinPromise - promise from fetch activity
+     */
+    extractContributors: async function(fetchActivityMixinPromise) {
+
+            // console.log("!!!!")
+
+            let usersPerWsSet = new Set()
+            let arrFromSet = []
+
+            var dataFetched = await fetchActivityMixinPromise
+            console.log("dataFetched = ", dataFetched);
+
+
+            Object.values(dataFetched).forEach(int =&gt; {
+                Object.values(int).forEach(intN =&gt; {
+                    usersPerWsSet.add(intN.userId)
+                })
+            })
+
+            arrFromSet = Array.from(usersPerWsSet)
+
+            var externalContributors = arrFromSet.indexOf(userId) &gt; -1 ?
+                true :
+                false
+
+            return externalContributors
+
+        },
+    }
+        // /**
+        //  * function is used for:
+        //  *   making intermediate object for timeline component
+        //  *   making object for slider component
+        //  * @param {any} versioningParsed
+        //  */
+        // processData: function(versioningParsed) {
+
+        //     // TODO: put into mixins later
+        //     var sessionObject = versioningParsed.map(element =&gt; ({
+        //         timestamp: element.m.ts,
+        //         version: element.v,
+        //         sessionId: (Object.keys(element).indexOf("session") !== -1) ? element.session.sessionId : 0,
+        //         connectTime: (Object.keys(element).indexOf("session") !== -1) ? element.session.connectTime : 0,
+        //         userId: (Object.keys(element).indexOf("session") !== -1) ? element.session.userId : 0
+        //     }))
+
+        //     // INFO: filtering non-sessions
+        //     sessionObject = Object.keys(sessionObject).map(key =&gt; sessionObject[key])
+        //         .filter(element =&gt; (element.sessionId !== 0))
+
+        //     console.log("sessionObject = ", sessionObject);
+
+        //     this.$store.commit("changeCurrentSessionObject", sessionObject)
+
+        //     // making Set to identify unique session and max/min
+        //     var sessionGrouped = _.chain(sessionObject)
+        //         .groupBy("sessionId")
+        //         .map(session =&gt; ({
+        //             "sessionId": session[0]['sessionId'],
+        //             "connectTime": session[0]['connectTime'],
+        //             "users": [...new Set(_.map(session, "userId"))],
+        //             "maxConnectTime": _.maxBy(session, "timestamp")['timestamp'],
+        //             "minConnectTime": _.minBy(session, "timestamp")['timestamp'],
+        //             "maxVersion": _.maxBy(session, "timestamp")['version'],
+        //             "minVersion": _.minBy(session, "timestamp")['version']
+        //         })).value()
+
+        //     console.log("sessionGrouped = ", sessionGrouped);
+        //     console.dir('Data is Processed Successfully, session-grouped:', sessionGrouped)
+
+        //     this.sessionGrouped = sessionGrouped
+        //     return sessionGrouped
+        // }
+})
+
+exports = Object.assign(exports, {dataObjectsCreator})</pre></div><div class="paragraph code-paragraph collapsed" data-id="g93suXSc" name="transclusion" last-execution-state="success"><pre data-type="content" type="text/javascript" id="transclusion">const transclusion = Vue.mixin({
+    data: () =&gt; ({
+        docContainer: '',
+        docIframeTransient: '',
+        transcludedWebstrateId: ''
+    }),
+    methods: {
+        /**
+         * chaning version of transcluded webstrate for plain/1-st level structures
+         * @param {any} wsId - transcluded webstrate Id to manipulate
+         * @param {any} v - desired version derived from corresponding tag/session
+         */
+        constructWsTransclusionSimple: function(wsId, v) {
+
+            // INFO: several things to consider
+            // transient tags
+            // In order to really compose new webstrate with custom version,
+            // I need to delete transiet section and apply dom to non-transient section
+
+            // INFO: make a recommendation to disable programmatic creation of transclusion
+            // per a demonstration - cause they gonna interfere/duplicate with the composed webstrate
+
+            // INFO: programmatic creation of transclusion
+            // In this case, I am just parsing already processed webstrate
+            // So, no probelm to solve here
+
+            // TODO: test plain structure
+            // SOLVED: I need to check whether it is already been used
+            // FIXME: don't delete transclusions
+
+            var ndList = document.getElementsByTagName("iframe")
+
+            for (var i = 0; i &lt; ndList.length; i++) {
+
+                ndList[i].getAttribute("src").search(wsId) &gt; -1 &amp;&amp;
+                    ndList[i].setAttribute("src", "/" + wsId + "/" + v + "/")
+
+            }
+
+            // document.getElementById(wsId).setAttribute("src", "/" + wsId + "/" + v + "/")
+
+        },
+        /** Used for tags fetching */
+        initiateTransclusion: function() {
+            // this.docContainer = document.getElementById("trans-container")
+            this.docContainer = document.getElementById("mainBody")
+            this.docIframeTransient = document.createElement("transient")
+            this.docContainer.appendChild(this.docIframeTransient)
+        },
+        /** Used for visibly attaching iframe */
+        initiateTransclusionNew: function() {
+            // this.docContainer = document.getElementById("trans-container")
+            this.docContainer = document.getElementById("trs-container")
+            this.docIframeTransient = document.createElement("transient")
+            this.docContainer.appendChild(this.docIframeTransient)
+        },
+        /**
+         * creates invisible iframe
+         * @param {any} webstrateId
+         */
+        createIframe: function(webstrateId) {
+
+            var docIframe = document.createElement("iframe")
+
+            docIframe.setAttribute("src", "/" + webstrateId + "/")
+            docIframe.setAttribute("id", webstrateId)
+            docIframe.setAttribute("style", "display: none;")
+
+            this.docIframeTransient.appendChild(docIframe)
+
+        },
+        /**
+         * creates visible iframe
+         * @param {any} webstrateId
+         */
+        createIframeNew: function(webstrateId) {
+
+            var docIframe = document.createElement("iframe")
+
+            docIframe.setAttribute("src", "/" + webstrateId + "/")
+            docIframe.setAttribute("id", webstrateId)
+            docIframe.setAttribute("width", 750)
+            docIframe.setAttribute("height", 750)
+
+            this.docIframeTransient.appendChild(docIframe)
+
+        },
+
+        // FIXME: remove function
+        removeIframe: function(webstrateId) {
+
+            var tr = document.getElementById(webstrateId)
+
+            function removeElement(elementId) {
+                var element = document.getElementById(elementId);
+                element.parentNode.removeChild(element);
+            }
+
+
+
+            removeElement(webstrateId)
+        },
+
+        selectWebstrateIdFromTransclusion: function(webstrateId) {
+
+            var tr = document.getElementById(webstrateId)
+            tr.webstrate.on("transcluded", (iframeWebstrateId) =&gt; {
+
+                console.log("Transclusion done")
+                console.log(iframeWebstrateId)
+
+                window.tss = tr.contentDocument.documentElement // BODY tag
+                // window.tss = tr.contentDocument.documentElement.children[1] // BODY tag
+                // console.log("tmp = ", tmp);
+
+
+                console.log(tr.contentWindow.webstrate.tags())
+
+            })
+
+
+        },
+        receiveTags: function(webstrateId) {
+
+            var tr = document.getElementById(webstrateId)
+
+            tr.webstrate.on("transcluded", (iframeWebstrateId) =&gt; {
+
+                console.log("Transclusion done")
+                console.log(iframeWebstrateId)
+                console.log(tr.contentWindow.webstrate.tags())
+
+                tr.contentWindow.webstrate.tag("CUSTOM")
+                tr.remove()
+            })
+
+        },
+        /**
+         * Transclude Ws in order to read Dom
+         * This creates no visible transcluded iframe
+         * @param {any} webstrateId
+         */
+        silentylyTransclude: function(webstrateId) {
+
+            // var docIframe = document.createElement("iframe")
+
+            // docIframe.setAttribute("src", "/" + webstrateId + "/")
+            // docIframe.setAttribute("id", webstrateId)
+            // docIframe.setAttribute("width", 750)
+            // docIframe.setAttribute("height", 750)
+
+
+            // this.docIframeTransient.appendChild(docIframe)
+
+            var tr = document.getElementById(webstrateId)
+
+            tr.webstrate.on("loaded", () =&gt; {
+
+                console.log("Loading is Done")
+                console.log(tr)
+
+
+                // var d3Data = this.init(tr, undefined, undefined)
+                // console.log("d3Data = ", d3Data);
+
+
+                // console.dir(iframeWebstrateId)
+                // console.dir(tr.contentWindow.webstrate.tags())
+
+
+                // tr.contentWindow.webstrate.tag("CUSTOM")
+                // tr.remove()
+            })
+
+            tr.webstrate.on("transcluded", (iframeWebstrateId) =&gt; {
+
+                console.log("Transclusion done")
+
+
+            })
+
+            // return tr
+
+        }
+    }
+})
+
+exports = Object.assign(exports, {transclusion})</pre></div><div class="paragraph code-paragraph collapsed" data-id="zAJnhzAW" name="vue-slider-component" last-execution-state="success"><pre data-type="content" type="text/javascript" id="vue-slider-component">// This component intended to be used with dom-tree
+// in order to eliminate repetitive data creation I connected its logic with
+// timeline-component, seens needed data is fetched there
+// SOLVED: try range mode
+
+const dataFetchMixin = require("#data-fetch-mixin").dataFetchMixin
+const dataObjectsCreator = require("#data-object-creator").dataObjectsCreator
+const transclusion = require("#transclusion").transclusion
+
+
+importLib([
+    "index.js"
+]).then(() =&gt; {
+  
+ var vueSlider = window[ 'vue-slider-component' ]
+
+const slider = Vue.component('vue-slider-configured', {
+    mixins: [dataFetchMixin, dataObjectsCreator, transclusion],
+    props: ["webstrateIdSliderProp"],
+    components: {
+        'vue-slider': vueSlider
+    },
+    template: `
+&lt;div&gt;
+
+&lt;br&gt;
+
+ &lt;vue-slider v-model="valueSlider" ref="slider" v-if="webstrateIdSliderProp !== 'main'"
+              :data="sliderOptionsComp.data"
+              :interval="sliderOptionsComp.interval"
+              :piecewise="true"
+              :formatter="sliderOptionsComp.formatter" 
+              :mergeFormatter="sliderOptionsComp.mergeFormatter"
+              :piecewiseStyle="sliderOptionsComp.piecewiseStyle"
+              :piecewiseActiveStyle="sliderOptionsComp.piecewiseActiveStyle"
+              :labelActiveStyle="sliderOptionsComp.labelActiveStyle"
+              :enableCross="false"&gt; 
+  &lt;/vue-slider&gt;
+
+&lt;br&gt;
+
+    &lt;button @click="changeMode('versions')" v-if="mode === 'global'"&gt;Version Mode&lt;/button&gt;
+    &lt;button @click="changeMode('sessions')" v-if="mode === 'global'"&gt;Sessions aka Auto-Tag Mode&lt;/button&gt;
+    &lt;button @click="changeMode('tags')"     v-if="mode === 'global'"&gt;Users Tags Mode&lt;/button&gt;
+
+&lt;/div&gt;
+`,
+    data: () =&gt; ({
+        mode: "global",
+        // valueSliderMemory: "", // INFO: I am using this in order to memorise
+        valueSlider: [1, 3],
+        currentMode: "default",
+        sliderOptionsComp: {
+            value: '',
+            // data: [],
+            data: "",
+            interval: 1,
+            min: 0,
+            max: 100,
+            formatter: ""
+        },
+    }),
+    methods: {
+        /**
+         * function is used for:
+         *   making intermediate object for timeline component
+         *   making object for slider component
+         * @param {any} versioningParsed
+         */
+        processData: function(versioningParsed) {
+
+            // TODO: put into mixins later
+            var sessionObject = versioningParsed.map(element =&gt; ({
+                timestamp: element.m.ts,
+                version: element.v,
+                sessionId: (Object.keys(element).indexOf("session") !== -1) ? element.session.sessionId : 0,
+                connectTime: (Object.keys(element).indexOf("session") !== -1) ? element.session.connectTime : 0,
+                userId: (Object.keys(element).indexOf("session") !== -1) ? element.session.userId : 0
+            }))
+
+            // INFO: filtering non-sessions
+            sessionObject = Object.keys(sessionObject).map(key =&gt; sessionObject[key])
+                .filter(element =&gt; (element.sessionId !== 0))
+
+            console.log("sessionObject = ", sessionObject);
+
+            store.commit("changeCurrentSessionObject", sessionObject)
+
+            // making Set to identify unique session and max/min
+            var sessionGrouped = _.chain(sessionObject)
+                .groupBy("sessionId")
+                .map(session =&gt; ({
+                    "sessionId": session[0]['sessionId'],
+                    "connectTime": session[0]['connectTime'],
+                    "users": [...new Set(_.map(session, "userId"))],
+                    "maxConnectTime": _.maxBy(session, "timestamp")['timestamp'],
+                    "minConnectTime": _.minBy(session, "timestamp")['timestamp'],
+                    "maxVersion": _.maxBy(session, "timestamp")['version'],
+                    "minVersion": _.minBy(session, "timestamp")['version']
+                })).value()
+
+            console.log("sessionGrouped = ", sessionGrouped);
+            console.log('Data is Processed Successfully, session-grouped:', sessionGrouped)
+
+            this.sessionGrouped = sessionGrouped
+            return sessionGrouped
+        },
+        changeMode: async function(mode) {
+
+            if (mode === "tags") { // INFO: user Tags Mode
+
+                var tags = await this.fetchTags(this.$store.state.webstrateId)
+                // console.log("this.$store = ", this.$store.state.webstrateId); // FIXME:
+                // console.log("tags = ", tags);
+
+                var regSrc = /.*?Session.*?/gi
+
+                // window.tags = tags
+                // this.sliderOptionsComp.mergeFormatter = "¥{value[0]} ~ ¥{value[1]}"
+
+                try {
+                    var tt = tags.map((el, i, tags) =&gt; {
+                        // return el.label.match(regSrc).length === null &amp;&amp; tags[i].label
+                        return el.label.match(regSrc) === null &amp;&amp; {
+                            v: tags[i].v,
+                            label: tags[i].label
+                        }
+                    }).filter(el =&gt; el !== false)
+
+                    // console.log("tt = ", tt);
+
+
+                    if (typeof tt === "undefined") {
+
+                        console.log("NO User-Defined Tags")
+                        // console.log("tt = ", tt);
+
+                        this.sliderOptionsComp.data = [1]
+                        this.sliderOptionsComp.min = 0
+                        this.sliderOptionsComp.max = 1
+
+
+                    } else {
+
+                        console.log("There User-Defined Tags")
+
+                        // console.log("tt = ", tt);
+                        // console.log("this.sliderOptionsComp = ", this.sliderOptionsComp.data);
+
+
+
+                        this.sliderOptionsComp.data = tt
+                        this.sliderOptionsComp.piecewiseLabel = true
+                        this.sliderOptionsComp.min = tt[0].v
+                        this.sliderOptionsComp.max = tt[tt.length - 1].v
+
+
+                        this.$nextTick(() =&gt; {
+                            this.sliderOptionsComp.formatter = (v) =&gt; `${v.label}`
+                            this.sliderOptionsComp.mergeFormatter = (v1, v2) =&gt; `¥${v1.label} ~ ¥${v2.label}`
+                        });
+
+                        this.sliderOptionsComp.piecewiseStyle = {
+                            "backgroundColor": "#ccc",
+                            "visibility": "visible",
+                            "width": "12px",
+                            "height": "12px"
+                        }
+
+                        this.sliderOptionsComp.piecewiseLabel = true
+                        this.sliderOptionsComp.piecewiseActiveStyle = {
+                            "backgroundColor": "#3498db"
+                        }
+
+                        this.sliderOptionsComp.labelActiveStyle = {
+                            "color": "#3498db"
+                        }
+
+                    }
+
+
+                } catch (err) {
+                    console.error("Probably, issue is that there is only 1 tag:\n", err)
+                } finally {}
+
+
+            } else if (mode === "sessions") {
+
+                var wsId = this.$store.state.webstrateId
+                var tags = await this.fetchTags(wsId)
+                console.log(tags)
+
+                var vSession = [];
+                var vLabel = [];
+
+                tags.forEach(el =&gt; {
+                    vSession.push(el.v)
+                    vLabel.push(el.label)
+                })
+
+
+                var vUnited = [];
+
+                tags.forEach(el =&gt; {
+                    vUnited.push(el.v + "||" + el.label)
+                })
+
+                console.log("vUnited = ", vUnited);
+
+                // this.sliderOptionsComp.data = vUnited // FIXME: delete
+                this.sliderOptionsComp.data = tags // FIXME: delete
+                // this.sliderOptionsComp.interval = 1
+                this.sliderOptionsComp.piecewiseLabel = true
+                // this.sliderOptionsComp.formatter = "(v) =&gt; `¥{v.label}`"
+
+                this.$nextTick(() =&gt; {
+                    this.sliderOptionsComp.formatter = (v) =&gt; `${v.label}`
+                    this.sliderOptionsComp.mergeFormatter = (v1, v2) =&gt; `¥${v1.label} ~ ¥${v2.label}`
+                });
+
+                // setTimeout(() =&gt; {
+                //     this.sliderOptionsComp.formatter = (v) =&gt; `${v.label}`
+                //     this.sliderOptionsComp.mergeFormatter = (v1, v2) =&gt; `¥${v1.label} ~ ¥${v2.label}`
+                // }, 100)
+
+
+                // this.sliderOptionsComp.mergeFormatter = "¥{value[0]} ~ ¥{value[1]}"
+
+
+                this.sliderOptionsComp.piecewiseStyle = {
+                    "backgroundColor": "#ccc",
+                    "visibility": "visible",
+                    "width": "12px",
+                    "height": "12px"
+                }
+
+
+                this.sliderOptionsComp.piecewiseStyle = {
+                    "backgroundColor": "#3498db"
+                }
+
+                this.sliderOptionsComp.piecewiseStyle = {
+                    "color": "#3498db"
+                }
+
+
+            } else { // INFO: just raw versions
+
+                console.log("raw versions")
+
+                var lastVersion = await this.lastVersion(this.$store.state.webstrateId)
+
+                this.sliderOptionsComp.piecewiseLabel = false
+                this.sliderOptionsComp.min = 1
+                this.sliderOptionsComp.max = lastVersion
+
+                // console.log(this.getOpsJsonMixin(this.$store.state.webstrateId))
+                // console.log("Last version", this.sliderOptionsComp.max)
+                // console.log("this.sliderOptionsComp.data = ", this.sliderOptionsComp.data);
+
+                const range = (start, stop, step = 1) =&gt;
+                    Array(Math.ceil((stop - start) / step)).fill(start).map((x, y) =&gt; x + y * step)
+
+                this.sliderOptionsComp.data = range(this.sliderOptionsComp.min, this.sliderOptionsComp.max)
+
+                this.sliderOptionsComp.interval = 20
+                this.sliderOptionsComp.piecewiseLabel = false
+
+
+
+                this.sliderOptionsComp.formatter = "{value}"
+                this.sliderOptionsComp.mergeFormatter = "¥{value[0]} ~ ¥{value[1]}"
+
+            }
+        }
+    },
+    async mounted() {
+
+        // INFO: if I am using this in the local mode (via prop)
+        // I don't want to use store
+
+        if (this.webstrateIdSliderProp !== undefined) {
+
+            this.mode = "local"
+            this.sliderOptionsComp.data = [1, 2, 3]
+            console.log("Slider Local Mode")
+
+            var wsId = this.webstrateIdSliderProp
+            var tags = await this.fetchTags(wsId)
+            console.log(tags)
+
+            var vSession = [];
+            var vLabel = [];
+
+            tags.forEach(el =&gt; {
+                vSession.push(el.v)
+                vLabel.push(el.label)
+            })
+
+
+            var vUnited = [];
+
+            tags.forEach(el =&gt; {
+                vUnited.push(el.v + "||" + el.label)
+            })
+
+            console.log("vUnited = ", vUnited);
+
+            this.sliderOptionsComp.data = tags // FIXME: delete
+            this.sliderOptionsComp.piecewiseLabel = true
+
+            this.$nextTick(() =&gt; {
+                this.sliderOptionsComp.formatter = (v) =&gt; `${v.label}`
+                this.sliderOptionsComp.mergeFormatter = (v1, v2) =&gt; `¥${v1.label} ~ ¥${v2.label}`
+            });
+
+            // setTimeout(() =&gt; {
+            //     this.sliderOptionsComp.formatter = (v) =&gt; `${v.label}`
+            //     this.sliderOptionsComp.mergeFormatter = (v1, v2) =&gt; `¥${v1.label} ~ ¥${v2.label}`
+            // }, 100)
+
+
+            this.sliderOptionsComp.piecewiseStyle = {
+                "backgroundColor": "#ccc",
+                "visibility": "visible",
+                "width": "12px",
+                "height": "12px"
+            }
+
+
+            this.sliderOptionsComp.piecewiseStyle = {
+                "backgroundColor": "#3498db"
+            }
+
+            this.sliderOptionsComp.piecewiseStyle = {
+                "color": "#3498db"
+            }
+
+            // INFO: LOCAL MODE (manipulates for construction)
+            // INFO: watching for manipulations made with slider
+            // and mutating corresponding state in store
+
+            this.$watch((vm) =&gt; (vm.valueSlider), val =&gt; {
+
+                console.log("this.valueSlider changed", this.valueSlider)
+                console.log("Slider shifted, commited to store", this.valueSlider)
+
+                // setTimeout(function() {
+
+                // INFO: checking whether versions are wrapped in array of objects
+
+                if (this.valueSlider[0].v !== undefined &amp;&amp; this.valueSlider[1].v !== null) {
+
+
+                    // console.log(this.valueSlider)
+                    // console.log("CHECKING Slider type", typeof this.valueSlider[0].v !== undefined)
+
+                    var parsedVersions = this.valueSlider.map(el =&gt; {
+                        return el.v
+                    })
+
+
+                    // INFO: Changing WebstrateId Version IN parent webstrate for child webstrate
+                    // INFO: This is limited to the non-nested transclusion
+                    this.constructWsTransclusionSimple(this.webstrateIdSliderProp, this.valueSlider[1].v)
+
+                    console.log("this.valueSlider = ", this.valueSlider);
+                    console.log("parsedVersions = ", parsedVersions);
+
+                    setTimeout(() =&gt; {
+                        // this.$store.commit("changeSliderVersions", parsedVersions)
+                    }, 3000)
+
+
+                } else {
+                    setTimeout(() =&gt; {
+                        // this.$store.commit("changeSliderVersions", this.valueSlider)
+                    }, 3000)
+
+                }
+
+                console.log("SLIDER STORE:", this.$store.state.valueSlider)
+
+            })
+
+
+
+        } else {
+
+            // INFO: if no information about versions is presented, fetch it
+
+            if (typeof this.$store.state.sessionObject === undefined |
+                this.$store.state.sessionObject === "") {
+
+                console.log("Fetching Session Object in Slider Component")
+
+                var selected = this.$store.state.webstrateId
+                console.log("selected = ", selected);
+
+                var versioningParsed = await this.getOpsJsonMixin(selected)
+                var sessionGrouped = this.processData(versioningParsed)
+
+                // this.$store.commit("changeCurrentSessionObject", sessionGrouped)
+
+            } else {
+                console.log("Session object for slider is already presented")
+            }
+
+
+            // INFO: watching for manipulations made with slider
+            // and mutating corresponding state in store
+
+            this.$watch((vm) =&gt; (vm.valueSlider), val =&gt; {
+
+                console.log("this.valueSlider changed", this.valueSlider)
+                console.log("Slider shifted, commited to store", this.valueSlider)
+
+                // setTimeout(function() {
+
+                // INFO: checking whether versions are wrapped in array of objects
+
+                if (this.valueSlider[0].v !== undefined &amp;&amp; this.valueSlider[0].v !== null) {
+
+                    console.log(this.valueSlider)
+                    console.log("CHECKING Slider type", typeof this.valueSlider[0].v !== undefined)
+
+                    var parsedVersions = this.valueSlider.map(el =&gt; {
+                        return el.v
+                    })
+                    console.log("this.valueSlider = ", this.valueSlider);
+                    console.log("parsedVersions = ", parsedVersions);
+
+                    setTimeout(() =&gt; {
+                        this.$store.commit("changeSliderVersions", parsedVersions)
+                    }, 3000)
+
+
+
+                } else {
+                    setTimeout(() =&gt; {
+                        this.$store.commit("changeSliderVersions", this.valueSlider)
+                    }, 3000)
+
+                }
+
+                console.log("SLIDER STORE:", this.$store.state.valueSlider)
+
+                // debugger
+                // }.bind(this), 3000)
+
+
+            })
+
+            // INFO: Receiveing session-object from timeline-component
+            this.$watch(
+                (vm) =&gt; (vm.$store.state.sessionObject, Date.now()), async val =&gt; {
+
+                    console.dir("store.state.sessionObject is received")
+                    var sessionObject = this.$store.state.sessionObject
+                    console.log("sessionObject = ", sessionObject); // INFO: getting from store
+
+                    // fetching tags
+                    var wsId = this.$store.state.webstrateId
+                    // console.log("wsId = ", wsId);
+                    // var tags = await this.fetchTags(wsId)
+                    // console.log("tags = ", tags);
+                    // var rTags = await this.fetchRangeOfTags(wsId)
+                    // console.log("rTags = ", rTags);
+                    // fetching tags
+
+                    var counter = 0,
+                        sessionIds = []
+
+                    sessionObject.forEach((el, index) =&gt; {
+                        counter = counter + 1
+                        sessionIds.push(counter)
+                    })
+
+                    console.log("Slider Options")
+                    this.sliderOptionsComp.data = sessionIds // FIXME: delete
+                    this.sliderOptionsComp.value = sessionIds
+                    // this.sliderOptionsComp.formatter = "¥" {{ this.sliderOptionsComp.value }}
+                    this.sliderOptionsComp.min = this.valueSlider[0] = sessionIds[0]
+                    this.sliderOptionsComp.max = this.valueSlider[1] = sessionIds[sessionIds.length - 1]
+
+
+                }, {
+                    immediate: true
+                }
+            )
+
+        }
+    }
+})
+}) // import
+
+exports = Object.assign(exports, {slider})</pre></div><div class="paragraph code-paragraph collapsed" data-id="t7ss2up8" name="diff-vue-component"><pre data-type="content" type="text/javascript" id="diff-vue-component">
+// const window.jsdiffTrue = require('diff')
+
+
+
+const diffVueComponent = Vue.component('diff-vue-component', {
+    props: {
+        rootInstanceProp: Array,
+        mode: String
+    },
+    template: `
+&lt;div&gt;
+
+  &lt;component :is="dynamicComponentDiff" /&gt;
+   
+  &lt;div id="pretty-diff-custom"&gt;
+  &lt;/div&gt;
+
+  &lt;select v-model="selected" type="button" class="btn dropdown-toggle btn-primary"&gt;
+          &lt;option v-for="option in options" v-bind:value="option"&gt;
+               {{ option }}
+          &lt;/option&gt;
+        &lt;/select&gt;
+
+&lt;/div&gt;
+`,
+    data: () =&gt; ({
+        preDiff: [],
+        diff: '',
+        options: ['char', 'sentence', 'line', 'patch'],
+        isUpdated: false, // INFO: in order to keep info about prop and selected I use this
+        selected: this.mode // INFO: important for first init
+    }),
+    computed: {
+
+        // ...mapState([
+        //     currentNodeInitial,
+        //     currentNodeLatest
+        // ]),        
+
+        currentNodeComputed() {
+            return this.$store.getters.currentNodeGet
+        },
+        counter() {
+            return this.rootInstanceProp
+        },
+        dynamicComponentDiff() {
+
+            console.log("DYNAMIC COMPONENT")
+
+            var diff = this.diff
+
+            return {
+                render(h) {
+                    return h('div', {
+                            'class': 'omg'
+                        },
+                        [h('pre', {
+                                'id': 'display'
+                            },
+                            diff.map(el =&gt; (h('span', // SOLVED: returning array in a map
+                                {
+                                    style: {
+                                        'color': el.added ? 'green' : el.removed ? 'red' : 'grey'
+                                    },
+                                    domProps: {
+                                        innerHTML: el.value
+                                    }
+                                }))))]
+                    )
+                }
+            }
+        }
+    },
+    methods: {
+        // TODO: look for selected with particualr _alignment
+        // TODO: search for both initial and latest
+        /**
+         * 
+         * filter util for objects
+         * @param {any} list - object to search in
+         * @param {any} propertyName - desired property
+         * @param {any} valueFilter - value of desired property
+         * @param {any} alignment - alignment ~ initial or latest state
+         */
+        findSelectedInList: function(list, propertyName, valueFilter, alignment) {
+            let selected
+
+            function innerFunction(list, propertyName, valueFilter, alignment) {
+
+
+                if (typeof Object.values(list) != "undefined") {
+                    Object.values(list).some((currentItem) =&gt; {
+                        if (typeof currentItem != null | typeof currentItem !== "undefined") {
+                            if (typeof currentItem[propertyName] !== "undefined" | typeof currentItem[propertyName] != null) {
+                                if (currentItem[propertyName] === valueFilter &amp;&amp; currentItem.alignment === alignment) {
+                                    selected = currentItem.innerText
+                                    console.group("1")
+                                    console.log("currentItem", currentItem)
+                                    console.log("currentItem Alignment", currentItem.alignment)
+                                    console.log("alignment", alignment)
+                                    console.log("value filer", valueFilter)
+                                    console.log("propertyName", propertyName)
+                                    console.groupEnd("1")
+                                } else {
+                                    (typeof currentItem.children !== "undefined" &amp;&amp; innerFunction(currentItem.children, propertyName, valueFilter, alignment))
+                                }
+                            }
+                        }
+                    })
+                }
+                return selected
+            }
+
+
+            return innerFunction(list, propertyName, valueFilter, alignment)
+
+        }
+    },
+    async mounted() {
+
+        // FIXME: this is used only once
+        this.$watch(
+            vm =&gt; ([vm.currentNodeComputed, vm.selected, vm.counter].join()), val =&gt; {
+
+                console.log("Inside diff")
+                // console.dir("STATE:")
+                // console.dir(this.$store.state.currentNode)
+                // console.log("selected mode: ", this.selected)
+                console.log("currentNodeComputed: ", this.currentNodeComputed)
+                console.log("counter: ", this.counter)
+
+                // INFO: mechanism to keep both prop and selected
+                var localMode
+                console.dir(this.isUpdated === false)
+                if (this.isUpdated === false) {
+                    localMode = this.mode
+                    this.isUpdated = true
+                } else {
+                    localMode = this.selected
+                }
+
+                console.log("checking whether array is empty", preDiffLocal)
+                var preDiffLocal = []
+
+                // console.log("!!!!!!!", this.counter[0])
+                // FIXME: eliminate counter since there is no more need for array
+                // FIXME: update counter
+                // FIXME: consider case with empty list
+                // d3.select("#svgMain").
+
+
+                // console.log("Left", this.findSelectedInList(window.dfr.data.children,
+                //     "name", this.currentNodeComputed, "left"))
+                // console.log("Right", this.findSelectedInList(window.dfr.data.children,
+                //     "name", this.currentNodeComputed, "right"))
+
+                // this.findSelectedInList(window.dfr.data.children,
+                //     "name", this.currentNodeComputed, "left")
+                // "Right", this.findSelectedInList(window.dfr.data.children,
+                //     "name", this.currentNodeComputed, "right")
+
+
+                // this.counter[0].data.children
+                preDiffLocal.push(this.findSelectedInList(window.dfr.data.children,
+                    "name", this.currentNodeComputed, "left")) // INFO: initial version
+                preDiffLocal.push(this.findSelectedInList(window.dfr.data.children,
+                    "name", this.currentNodeComputed, "right") + "NEW") // INFO: later version
+
+                console.log("Counter: \n", this.counter)
+                console.log("PreDIF :\n", preDiffLocal)
+                console.log("Compute :\n", this.currentNodeComputed)
+
+                // FIXME: fix order of arguments (old, new)
+                var calculateDiff = function(mode) {
+                    var funToReturn;
+
+                    switch (mode) {
+                        case "patch":
+                            funToReturn = window.jsdiffTrue.createPatch
+                            break;
+                        case "sentence":
+                            funToReturn = window.jsdiffTrue.diffSentences
+                            break;
+                        case "line":
+                            funToReturn = window.jsdiffTrue.diffLines
+                            break;
+                        case "char":
+                            funToReturn = window.jsdiffTrue.diffChars
+                            break;
+                    }
+                    return funToReturn
+                }
+
+                var funDiff = calculateDiff(localMode)
+                // console.dir(funDiff)
+                // console.dir("nmew fund idff")
+                // console.dir(localMode)
+
+                this.diff = localMode === 'patch' ?
+                    funDiff(this.$store.state.webstrateId, preDiffLocal[0], preDiffLocal[1],
+                        "version: " + this.$store.state.sliderVersions[0],
+                        "version: " + this.$store.state.sliderVersions[1]) :
+                    funDiff(preDiffLocal[0], preDiffLocal[1])
+
+
+                if (localMode === 'patch') {
+                    var diffHtml = Diff2Html.getPrettyHtml(
+                        this.diff, {
+                            inputFormat: 'diff',
+                            showFiles: false,
+                            matching: 'lines',
+                            outputFormat: 'side-by-side'
+                        }
+                    )
+                    document.getElementById("pretty-diff-custom").innerHTML = diffHtml;
+                } else {
+                    console.log("Not a patch, skipping diff2html")
+                }
+
+            })
+    }
+})
+
+exports = Object.assign(exports, {diffVueComponent})</pre></div><div class="paragraph code-paragraph" data-id="Gk2npb9Y" last-execution-state="success" name="metric-component"><pre data-type="content" type="text/javascript" id="metric-component">importLib([
   "Vs.min.js"
 ]).then(() =&gt; {
   
   // console.log(Vs)
   
   const utils = require("#helper-functions")  
-  utils.eraseDom("vue-body")
-  var containerElement = utils.createTransientContainer("vue-body")
+  utils.eraseDom("vue-metric")
+  var containerElement = utils.createTransientContainer("vue-metric")
   
   const OverviewComponent = Vue.component('overview', {
     template: `
@@ -94,14 +2353,14 @@ exports = Object.assign(exports, {createTransientContainer, eraseDom})</pre></di
   },
      template: `&lt;component-a/&gt;`
      
-   }).$mount(containerElement)
+   }).$mount()
+  
+  containerElement.children[0].appendChild(global.$el)
 
   
   
 })
-</pre></div><div class="paragraph code-paragraph" data-id="hvxWKUnW" name="vue-component"><pre data-type="content" type="text/javascript" id="vue-component">// Define a new component called button-counter
-
-const testComponent = Vue.component('button-counter', {
+</pre></div><div class="paragraph body-paragraph" data-id="rbY6iPaH" name="vue-metric"><div data-type="content" type="text/html" contenteditable="true" id="vue-metric"></div></div><div class="paragraph code-paragraph collapsed" data-id="hvxWKUnW" name="vue-component"><pre data-type="content" type="text/javascript" id="vue-component">const testComponent = Vue.component('button-counter', {
   data: function () {
     return {
       count: 0
@@ -111,14 +2370,13 @@ const testComponent = Vue.component('button-counter', {
 })
 
 exports = Object.assign(exports, {testComponent})
-</pre></div><div class="paragraph code-paragraph" data-id="MWRyGeSu" name="
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="MWRyGeSu" name="
 import-lib
 " last-execution-state="success"><pre data-type="content" type="text/javascript" id="
 import-lib
 ">importLib([
     "vue.min.js"
 ]).then(() =&gt; {
-  
   
   const testComponent = Vue.component('button-counter', {
   data: function () {
@@ -137,7 +2395,6 @@ import-lib
   template: '&lt;h1 class="hello"&gt;"Hi"&lt;/h1&gt;',
 			})
   
-    
    // var tt =  new testComponent({}).$mount(containerElement)   
    // var df =  new textComponent({}).$mount(containerElement)
    
@@ -152,4 +2409,2955 @@ import-lib
 
     
 })
-</pre></div><div class="paragraph body-paragraph" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"><div unapproved=""><button unapproved="">You clicked me 0 times.</button> <h1 unapproved="" class="hello">"Hi"</h1></div></div></div></div>
+</pre></div><div class="paragraph code-paragraph" data-id="UgeaMAX5" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+  "vue.min.js",
+  "vuex.min.js"
+]).then(() =&gt; {
+ 
+  // const network
+  const store = require("#vuex-store").store
+  const utils = require("#helper-functions")  
+  utils.eraseDom("vue-body")
+  var containerElement = utils.createTransientContainer("vue-body")
+  
+  var global = new Vue({
+     store, 
+     components: {
+    // 'component-a': testComponent,
+    // 'component-b': textComponent
+  },
+     template: `&lt;div&gt; &lt;component-a/&gt; &lt;component-b/&gt; &lt;/div&gt;`
+     
+   }).$mount(containerElement)
+
+  
+})</pre></div><div class="paragraph code-paragraph collapsed" data-id="BLp22RFN" last-execution-state="success" name="tt1"><pre data-type="content" type="text/javascript" id="tt1">importLib([
+  "vue.min.js",
+  "vuex.min.js",
+  "vue-context.js"
+]).then(() =&gt; {
+ 
+  // console.log(VueContext)
+  // const transclusion = require("#transclusion").transclusion
+  // const transclusion = require("#transclusion").transclusion
+  // console.log(transclusion
+  // const store = new Vue()
+  // exports = Object.assign(exports, {store})
+  
+  const tmpMixin = {
+    template: `
+	&lt;div&gt;
+        &lt;p @contextmenu.prevent="$refs.menu.open"&gt;
+            Right click on me
+        &lt;/p&gt;    
+    &lt;/div&gt;
+`
+  }
+  
+//  const myMixin = {
+//	template: `&lt;input v-model="name"&gt;`
+// };
+
+const Mix1 = Vue.extend({
+  mixins: [tmpMixin]
+})
+
+
+// new Vue({
+//    el: '#root',
+//    components: { Mix1, Mix2 }
+// });
+  
+   const store = require("#vuex-store").store
+   const utils = require("#helper-functions")  
+   utils.eraseDom("vue-test-context")
+  
+  var containerElement = utils.createTransientContainer("vue-test-context")
+  console.log(containerElement)
+  
+  console.log(VueContext)
+  
+  var ts = new Vue({
+     components: {
+       //'component-a': cmc,
+     VueContext,
+      Mix1
+    // 'component-b': textComponent
+  },
+    methods: {
+        onClick (text) {
+            alert(`You clicked ${text}!`);
+        }
+    },
+     // template: `&lt;div&gt; &lt;component-a/&gt; &lt;/div&gt;`
+    template: `
+
+&lt;div&gt;
+    &lt;vue-context ref="menu"&gt;
+        &lt;ul&gt;
+            &lt;li @click="onClick($event.target.innerText)"&gt;Option 1&lt;/li&gt;
+            &lt;li @click="onClick($event.target.innerText)"&gt;Option 2&lt;/li&gt;
+        &lt;/ul&gt;
+    &lt;/vue-context&gt;
+&lt;/div&gt;
+`,
+
+   })
+  
+  var final = new Vue({
+     store, 
+    components: {
+      'ts': ts
+    }, 
+    template: `
+
+&lt;div&gt;
+&lt;h3&gt;
+        &lt;p @contextmenu.prevent="$refs.menu.open"&gt;
+            Right click on me
+        &lt;/p&gt;    
+    &lt;/h3&gt;
+&lt;/div&gt;
+
+&lt;ts/&gt;
+`,
+    mounted(){
+      
+      this.$nextTick(function () {
+
+        console.log(this)
+    console.log(this.$refs.menu)
+
+})
+      
+    }
+    
+  }).$mount()
+  
+  // console.log(ts)
+  // console.log(VueContext)
+  // containerElement.children[0].appendChild(ts.$el)
+  containerElement.children[0].appendChild(final.$el)
+
+
+})
+
+
+</pre></div><div class="paragraph body-paragraph" data-id="AN4qr7QG" name="vue-test-context"><div data-type="content" type="text/html" contenteditable="true" class="writing" id="vue-test-context"></div></div><div class="paragraph code-paragraph" data-id="rCQWMuXq" last-execution-state="success"><pre data-type="content" type="text/javascript">// var tre = require("#tt1").store
+// console.log(tre)
+
+importLib([
+  "Vs.min.js",
+   "index.js"
+]).then(() =&gt; {
+  
+
+// console.log(window[ 'vue-slider-component' ])
+//  console.log(Vs.d3Timeline)
+// const cmc = require("#context-menu-component")
+// console.log(cmc.cmc)
+  
+// works
+const dataFetchMixin = require("#data-fetch-mixin")
+// works
+const dataObjectsCreator = require("#data-objects-creator")
+
+console.log("dataFetchMixin", dataFetchMixin.dataFetchMixin)
+console.log("dataObjectsCreator", dataObjectsCreator.dataObjectsCreator)
+  
+})</pre></div><div class="paragraph code-paragraph collapsed" data-id="SXVeqqft" name="context-menu-component" last-execution-state="success"><pre data-type="content" type="text/javascript" id="context-menu-component">importLib([
+  "vue-context.js",
+  "vue.min.js"
+]).then(() =&gt; {
+ 
+   
+  // works, but might use Ctor instead
+  // console.log(VueContext)
+  // works
+  	const transclusion = require("#transclusion").transclusion
+    // console.log(transclusion)
+    
+    const cmc = Vue.component('c-m-c', {
+    mixins: [transclusion],
+    components: {
+        'context-menu-component-imported': VueContext
+    },
+    template: `
+
+&lt;div&gt;
+
+&lt;context-menu-component-imported ref="menu"&gt;
+
+ &lt;ul v-if="currentRoute === '/dom-tree-d3'" slot-scope="child"&gt;
+      &lt;li @click="onClick(child.data)"&gt;Option 1&lt;/li&gt;
+  &lt;/ul&gt;
+  &lt;ul v-else-if="currentRoute === '/calendar'" slot-scope="child"&gt;
+      &lt;li @click="visitCurrentWebstrate"&gt;Visit Webstrate&lt;/li&gt;
+      &lt;li @click="visitCurrentWebstrate(child.data)"&gt;Copy Webstrate&lt;/li&gt;
+      &lt;li&gt; ---- &lt;/li&gt;
+      &lt;li @click="inspectSessions"&gt;Inspect Sessions&lt;/li&gt;
+      &lt;li @click="inspectVersions"&gt;Inspect Versions&lt;/li&gt;
+      &lt;li @click="inspectTree"&gt;Inspect Tree&lt;/li&gt;
+      &lt;li @click="inspectTransclusions"&gt;Inspect Transclusions&lt;/li&gt;
+      &lt;li @click="inspectCopies"&gt;Inspect Copies&lt;/li&gt;
+      &lt;li @click="inspectComplex"&gt;Inspect Complex&lt;/li&gt;
+      &lt;li&gt; ---- &lt;/li&gt;
+      &lt;li @click="goBack"&gt;Go Back&lt;/li&gt;
+      &lt;li&gt; ---- &lt;/li&gt;
+      &lt;li @click="$store.dispatch('getWebstratesList')"&gt;Store&lt;/li&gt;
+  &lt;/ul&gt;
+  &lt;ul v-else slot-scope="child"&gt;
+    &lt;li @click="inspectTree"&gt;Inspect Diff in Selected Sessions&lt;/li&gt;
+    &lt;li @click="visitCurrentWebstrate(child.data)"&gt;Visit Webstrate&lt;/li&gt;
+  &lt;/ul&gt;
+
+&lt;/context-menu-component-imported&gt;
+&lt;/div&gt;
+`,
+    computed: {
+        currentRoute() {
+            return this.$route.path
+        }
+    },
+    methods: {
+        goBack() {
+            this.$router.go(-1)
+        },
+        inspectTransclusions() {
+            this.$store.commit("changeCurrentWebstrateId", this.$store.state.contextMenuObject)
+            // this.$router.push({ name: 'foo', })
+            this.$router.push({
+                path: '/transclusion1',
+                params: {
+                    modeProp: 'transclusion'
+                }
+            })
+        },
+        inspectCopies() {
+            this.$store.commit("changeCurrentWebstrateId", this.$store.state.contextMenuObject)
+            this.$router.push({
+                path: '/transclusion1',
+                params: {
+                    modeProp: 'copy'
+                }
+            })
+            // INFO: if it is called from calendar - mutate webstrateId from node, if not - use current wsId
+        },
+        inspectTree() {
+            this.$route === "/calendar" &amp;&amp; this.$store.commit("changeCurrentWebstrateId", this.$store.state.contextMenuObject)
+            this.$router.push({
+                path: '/dom-tree-d3'
+            })
+        },
+        inspectComplex() {
+            this.$store.commit("changeCurrentWebstrateId", this.$store.state.contextMenuObject)
+            this.$router.push({
+                path: '/session-inspector'
+            })
+        },
+        inspectVersions() {
+            this.$router.push({
+                path: '/time-machine'
+            })
+        },
+        inspectSessions() {
+            this.$router.push({
+                path: '/timeline'
+            })
+        },
+        onClick(data) {
+            console.log(data)
+        },
+        bookmarkCurrentWebstrate: function(webstrateId) {
+            this.initiateTransclusion()
+            this.createIframe(webstrateId)
+            this.receiveTags(webstrateId)
+            console.log(webstrateId)
+        },
+        visitCurrentWebstrate: function(webstrateId) {
+            window.open(window.serverAddress + this.$store.state.contextMenuObject + "/", '_blank') // INFO: new tabs
+        },
+        // TODO: 
+        copyCurrentWebstrate: function(webstrateId) {
+            // http://&lt;hostname&gt;/&lt;webstrateId&gt;?restore=&lt;versionOrTag&gt;
+        }
+    },
+    mounted() {}
+
+})
+    
+    console.log("Cmc", cmc)
+
+exports = Object.assign(exports, {cmc})
+
+
+})
+
+</pre></div><div class="paragraph code-paragraph" data-id="xirvYp2X" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+  "vue.min.js",
+  "vuex.min.js"
+]).then(() =&gt; {
+ 
+  
+  // const cmc = require("#context-menu-component").cmc
+  // console.log(cmc)
+  // const timelineComponent = require("#timeline-component").TimelineComponent
+//   console.log(timelineComponent)
+  
+  
+  const timelineComponent = require("#timeline-component").TimelineComponent
+  // console.log("timelineComponent", timelineComponent)
+  
+  const store = require("#vuex-store").store
+  const utils = require("#helper-functions")  
+  
+  utils.eraseDom("vue-timeline")
+  var containerElement = utils.createTransientContainer("vue-timeline")
+  
+  var global = new Vue({
+     store, 
+     components: {
+     'component-a': timelineComponent,
+  },
+     template: `&lt;component-a&gt; &lt;component-a/&gt;`
+     
+   }).$mount()
+
+  containerElement.children[0].appendChild(global.$el)
+  
+})</pre></div><div class="paragraph body-paragraph locked" data-id="yfwqirjk" name="vue-timeline" transient-fullscreen="false" draggable="false" style=""><div data-type="content" type="text/html" contenteditable="false" id="vue-timeline" class="d"></div></div><div class="paragraph code-paragraph collapsed" data-id="3uPbdhYe" name="session-data"><pre data-type="content" type="text/javascript" id="session-data">const dt = [
+    {
+        "from": "2018-09-26T13:57:38.861Z",
+        "to": "2018-09-26T14:29:01.537Z",
+        "title": "0499d5ecbefa2d0134f2712b0afe6bec",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:00:15.476Z",
+        "to": "2018-09-26T14:00:50.333Z",
+        "title": "a9c9b90b278d40059eed0750b864ff26",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:03:53.095Z",
+        "to": "2018-09-26T14:03:53.095Z",
+        "title": "3b0e5d70fb370bd8c175d977fa6b1df6",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:05:12.296Z",
+        "to": "2018-09-26T14:05:12.296Z",
+        "title": "139beae46e6765ac1073efb5fdac17ee",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:29:13.030Z",
+        "to": "2018-09-26T14:30:15.886Z",
+        "title": "652c6647a9aa49537aa3a15f0550960c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:30:32.262Z",
+        "to": "2018-09-26T14:34:07.562Z",
+        "title": "9fc0acaf1f233990342f079bc3d47d97",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:34:15.087Z",
+        "to": "2018-09-26T14:34:57.253Z",
+        "title": "e41a33f6285ef6e13d7fbed101f6d8fe",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:34:59.260Z",
+        "to": "2018-09-26T14:37:12.711Z",
+        "title": "a9d81ea39c423b800934f01d8676f8da",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:37:15.764Z",
+        "to": "2018-09-26T14:37:55.923Z",
+        "title": "70b2ebee79239c2b9c13a4e424a6db1b",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:38:01.164Z",
+        "to": "2018-09-26T14:39:37.367Z",
+        "title": "412b6c4af5d5dce8da17fe817ec7c095",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:39:44.348Z",
+        "to": "2018-09-26T14:39:56.379Z",
+        "title": "eba0c29ba11f15b8a9931cfd33f0e762",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:40:57.768Z",
+        "to": "2018-09-26T14:41:00.557Z",
+        "title": "a4062b3b8566d44b262300305577a113",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:41:34.273Z",
+        "to": "2018-09-26T14:42:16.235Z",
+        "title": "a9ab60daa40f042f92122224b92dfd2f",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:42:32.317Z",
+        "to": "2018-09-26T14:43:14.733Z",
+        "title": "78eca3a83901b0d853d7395882833631",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:43:18.554Z",
+        "to": "2018-09-26T14:43:54.726Z",
+        "title": "115d2bb075c85c9f8c0af9ab0b4cca65",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T14:44:20.935Z",
+        "to": "2018-09-26T16:42:24.927Z",
+        "title": "7d839076b65b8540fea6e28aee1942a9",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T16:42:27.171Z",
+        "to": "2018-09-26T16:42:37.328Z",
+        "title": "2190578833818c9ddd5f6653af81c2ee",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T16:42:48.004Z",
+        "to": "2018-09-26T16:42:48.004Z",
+        "title": "6b9898794c9b1376a21575455616f980",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T16:43:06.111Z",
+        "to": "2018-09-26T16:43:33.632Z",
+        "title": "0003b349c784759d01c6b91bf22eedf8",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T16:43:13.953Z",
+        "to": "2018-09-26T17:54:32.040Z",
+        "title": "17e16274d40cc908e2aa6063f39e8df4",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T17:53:03.108Z",
+        "to": "2018-09-26T17:55:31.801Z",
+        "title": "92a6c4e913e82776566dd2a8e3e10520",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T17:54:37.045Z",
+        "to": "2018-09-26T18:20:38.605Z",
+        "title": "74cd580c74625237e119adf82185714e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T17:55:48.726Z",
+        "to": "2018-09-26T17:56:11.232Z",
+        "title": "c7a6ae574b75e902c089e043c4c56f97",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:07:37.668Z",
+        "to": "2018-09-26T18:08:13.969Z",
+        "title": "64b794bc4e3cf6b232ed615c751c621c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:09:30.227Z",
+        "to": "2018-09-26T18:09:42.454Z",
+        "title": "d97f053203193a7335d6822dcaa1de4c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:20:41.768Z",
+        "to": "2018-09-26T18:21:27.593Z",
+        "title": "da56ecc727dc59e9903b2eec283f6a47",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:21:35.842Z",
+        "to": "2018-09-26T18:22:03.942Z",
+        "title": "7160519e9180691dfaa561a595647252",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:22:05.410Z",
+        "to": "2018-09-26T18:22:37.616Z",
+        "title": "b954547b58b48868d5dae3a1adf5638c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:22:40.986Z",
+        "to": "2018-09-26T18:24:06.452Z",
+        "title": "5a0970b10b8249189ee2071bf09a4971",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:24:10.978Z",
+        "to": "2018-09-26T18:30:35.865Z",
+        "title": "43d42a5e65354cc4bb0cc631082d9146",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:24:51.314Z",
+        "to": "2018-09-26T18:25:26.976Z",
+        "title": "46c9aad3e0d0f98656990d42e5dab38f",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:29:13.197Z",
+        "to": "2018-09-26T18:29:13.197Z",
+        "title": "223d71bedd71cfe12dd8c3f283705fa8",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:31:09.770Z",
+        "to": "2018-09-26T18:31:09.770Z",
+        "title": "04ab88f723c63b8e3fbdc2f22b3c4d94",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:32:10.975Z",
+        "to": "2018-09-26T18:35:58.650Z",
+        "title": "d1277b2f7a5e5ba11e77cacee7e84232",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:36:00.607Z",
+        "to": "2018-09-26T18:38:03.405Z",
+        "title": "55d9270758e2617351c47f1eceb68751",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:38:08.654Z",
+        "to": "2018-09-26T18:38:08.654Z",
+        "title": "b1138f30a9f709fea41bef1702f55d78",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:38:15.208Z",
+        "to": "2018-09-26T18:39:43.912Z",
+        "title": "cbca2b939fee0f1c350ea44c732959f2",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:39:50.015Z",
+        "to": "2018-09-26T18:40:31.817Z",
+        "title": "7b1523df2d60a12a06ee0df401d5d688",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:40:35.058Z",
+        "to": "2018-09-26T18:40:45.697Z",
+        "title": "8a59b2ffc2475df0a7ab5d2933a4a7ca",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:40:47.929Z",
+        "to": "2018-09-26T18:43:53.569Z",
+        "title": "631c558f83aa5e6a38848b01238e48b4",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:43:55.010Z",
+        "to": "2018-09-26T18:49:49.750Z",
+        "title": "c4e719a085c6263611cecde09411358e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:49:54.990Z",
+        "to": "2018-09-26T18:51:46.861Z",
+        "title": "4a51a060b47f18785a3f87f9f2b9861b",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:51:49.326Z",
+        "to": "2018-09-26T18:51:58.885Z",
+        "title": "d683de2e44f95308085d171e917689a2",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:52:00.714Z",
+        "to": "2018-09-26T18:52:16.277Z",
+        "title": "58943dd3e26be20a8983f6ef8c0b7ff0",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:52:18.471Z",
+        "to": "2018-09-26T18:52:18.471Z",
+        "title": "c232ba16d6f1481b25d05928824f8617",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:52:34.799Z",
+        "to": "2018-09-26T18:52:55.240Z",
+        "title": "91cca04471879f2ef2850c8e66c6986f",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:53:01.200Z",
+        "to": "2018-09-26T18:53:01.200Z",
+        "title": "6527bc3a31913c858545644e03b94fb2",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:53:21.227Z",
+        "to": "2018-09-26T19:08:55.091Z",
+        "title": "64cc3e4cd1eb86ae94d88f0f76007c33",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:54:08.222Z",
+        "to": "2018-09-26T18:54:08.222Z",
+        "title": "56d061329a2273ea602c6c2f069a3f60",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:54:24.190Z",
+        "to": "2018-09-26T18:54:24.190Z",
+        "title": "7a56f84fc296da4411fe742cb7c0b850",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:55:26.603Z",
+        "to": "2018-09-26T18:55:26.603Z",
+        "title": "66f08e08348bc276b907f8f4d54146f3",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T18:55:36.933Z",
+        "to": "2018-09-26T18:55:36.933Z",
+        "title": "f2845f4aba2e07ab83a1f9ad22dac1b9",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:00:19.425Z",
+        "to": "2018-09-26T19:00:19.425Z",
+        "title": "b4bab43b1ca43ef440b187e36b2c7f8a",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:00:47.040Z",
+        "to": "2018-09-26T19:00:47.040Z",
+        "title": "564cbfd7dcac726a926e6f1709c62280",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:01:46.189Z",
+        "to": "2018-09-26T19:01:46.189Z",
+        "title": "86679e488726360b04bb535b79e9edb9",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:03:04.676Z",
+        "to": "2018-09-26T19:03:04.676Z",
+        "title": "9f67d345ec79bcaebb21b47b65b4396b",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:04:34.048Z",
+        "to": "2018-09-26T19:04:34.048Z",
+        "title": "a0b8c6472ab4bbe16477ca2227027ec3",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:05:52.910Z",
+        "to": "2018-09-26T19:05:52.910Z",
+        "title": "8ac16843745b242b2707a36fd7e00061",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:06:08.235Z",
+        "to": "2018-09-26T19:06:08.235Z",
+        "title": "7a35db3dc62223ef07b6f0dd719b1a34",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:06:19.143Z",
+        "to": "2018-09-26T19:06:19.143Z",
+        "title": "e309955335038b55b2b659cf4ce3daac",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:06:48.363Z",
+        "to": "2018-09-26T19:06:48.363Z",
+        "title": "4b7f891d5f3ac92f0defc01498e8833c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:07:36.662Z",
+        "to": "2018-09-26T19:07:36.662Z",
+        "title": "ec2ff47a635ff10bc4f393b93f5b1425",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:07:57.230Z",
+        "to": "2018-09-26T19:07:57.230Z",
+        "title": "ac079da990d5cda07031e58ffa4dc96e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:08:46.709Z",
+        "to": "2018-09-26T19:08:46.709Z",
+        "title": "2ae47080e87aa6a7825aea755ffe102c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-26T19:08:57.588Z",
+        "to": "2018-09-26T19:08:57.588Z",
+        "title": "fa13b878852d112565f20de3db226198",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:00:56.023Z",
+        "to": "2018-09-27T07:19:15.198Z",
+        "title": "00cbe823d40ef48ef21eefe66ee585e1",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:01:21.317Z",
+        "to": "2018-09-27T07:01:21.317Z",
+        "title": "6c572c0dad6ea6ebfa6672a738711b46",
+        "label": [
+            "maski89:github"
+        ],
+        "group": [
+            "maski89:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:18:20.946Z",
+        "to": "2018-09-27T07:18:20.946Z",
+        "title": "2b72dd5a3053061245bd6cf858242292",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:18:30.145Z",
+        "to": "2018-09-27T07:18:30.145Z",
+        "title": "186c172eacfa5a012b3909b80e75223e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:19:17.958Z",
+        "to": "2018-09-27T07:19:17.958Z",
+        "title": "8375f940842f4d9aa981bb923ace9e45",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:19:49.754Z",
+        "to": "2018-09-27T07:20:02.648Z",
+        "title": "6edba7db48bf37139c20e8e1d92ee608",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:20:41.665Z",
+        "to": "2018-09-27T07:20:41.665Z",
+        "title": "84936a58eae503ee171b36cdeef2c6f6",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:21:27.813Z",
+        "to": "2018-09-27T07:24:51.312Z",
+        "title": "442cc8f57e6fec068b8425c911672ca0",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:23:28.170Z",
+        "to": "2018-09-27T07:23:28.170Z",
+        "title": "219cdeabe55b2912cd55f499aa51b742",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:25:05.464Z",
+        "to": "2018-09-27T07:25:05.464Z",
+        "title": "63768f9a08c09402dd68dbab71cd6cf0",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:25:10.767Z",
+        "to": "2018-09-27T07:25:10.767Z",
+        "title": "0b0fa51db8e946f47f3d676f11fed198",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:25:22.202Z",
+        "to": "2018-09-27T07:25:22.202Z",
+        "title": "6efba81cafd8d4275d07ea7a83ece597",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:25:51.579Z",
+        "to": "2018-09-27T07:25:51.579Z",
+        "title": "4ce04d0322c1f1e2e813f36ea5b324d8",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:26:53.784Z",
+        "to": "2018-09-27T08:00:10.731Z",
+        "title": "9887c05e7cca61d3a45187b745414c55",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:39:53.504Z",
+        "to": "2018-09-27T07:39:54.668Z",
+        "title": "295e4eaf92099aeb7fda78e9f95c3b09",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:40:17.429Z",
+        "to": "2018-09-27T07:40:19.284Z",
+        "title": "12edcc6e8d62b711b8723e548ff22503",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:41:19.500Z",
+        "to": "2018-09-27T07:41:19.500Z",
+        "title": "d68a846099296a50f64285946aede727",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:42:29.896Z",
+        "to": "2018-09-27T07:42:29.896Z",
+        "title": "d01934a857f018fa08b83a6648821a26",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:43:54.829Z",
+        "to": "2018-09-27T07:43:54.829Z",
+        "title": "151543604a37b8588a8aab6bf3fd70ed",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:44:36.659Z",
+        "to": "2018-09-27T07:44:36.659Z",
+        "title": "237d88c2f5f12b2f704d488563a48a11",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:46:10.653Z",
+        "to": "2018-09-27T07:46:10.653Z",
+        "title": "25e1b709c2cfe6d87bef40f00f7db243",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:46:45.103Z",
+        "to": "2018-09-27T07:46:45.103Z",
+        "title": "76a6f2a4e6a6c5a9dbdc532505bc9334",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:48:26.521Z",
+        "to": "2018-09-27T07:48:26.521Z",
+        "title": "bbe0edc6875cbd2658343fbf598a9c12",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:49:17.531Z",
+        "to": "2018-09-27T07:49:17.531Z",
+        "title": "0cc4da6d80e2b0dc446d5bd035a22250",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:50:32.904Z",
+        "to": "2018-09-27T07:50:32.904Z",
+        "title": "ff8b70dbe3e8f31c8dd656a185600e93",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:52:52.279Z",
+        "to": "2018-09-27T07:53:54.215Z",
+        "title": "8d4ac23cc7f82cf2d8f5e5f1af7245b0",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T07:55:25.643Z",
+        "to": "2018-09-27T07:55:25.643Z",
+        "title": "17809417182d21796b342241121028c9",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:00:13.280Z",
+        "to": "2018-09-27T08:00:13.280Z",
+        "title": "c973673faa8b0f1c6006f4a772f3cdf0",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:22:18.186Z",
+        "to": "2018-09-27T08:24:01.754Z",
+        "title": "a39ed12547668dadafb2bcd06eef85e7",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:28:06.225Z",
+        "to": "2018-09-27T08:28:06.225Z",
+        "title": "b3b6c61e09a6e72ceb1106fb7706e359",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:30:15.763Z",
+        "to": "2018-09-27T08:30:49.449Z",
+        "title": "c73bcfba1ceef00f216576f45b7700a6",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:31:05.995Z",
+        "to": "2018-09-27T08:31:36.655Z",
+        "title": "4710573139edf681c8d57306c2afec15",
+        "label": [
+            "jbk:au"
+        ],
+        "group": [
+            "jbk:au"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:31:40.711Z",
+        "to": "2018-09-27T08:31:40.711Z",
+        "title": "908891316c19d8a329d8b4033e1605ad",
+        "label": [
+            "jbk:au"
+        ],
+        "group": [
+            "jbk:au"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:31:53.256Z",
+        "to": "2018-09-27T08:31:53.256Z",
+        "title": "b656fffc9b3ac7f5c54ab38116f1e884",
+        "label": [
+            "jbk:au"
+        ],
+        "group": [
+            "jbk:au"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:32:56.535Z",
+        "to": "2018-09-27T08:34:00.614Z",
+        "title": "e1b8818b5060249abade7a7581a87396",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:34:19.300Z",
+        "to": "2018-09-27T08:34:19.300Z",
+        "title": "28eb6ec87f52a84e6d028726cc657de9",
+        "label": [
+            "jbk:au"
+        ],
+        "group": [
+            "jbk:au"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:34:59.321Z",
+        "to": "2018-09-27T08:34:59.321Z",
+        "title": "a32e84ddf5f9033071c744fb414c89e5",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:47:31.888Z",
+        "to": "2018-09-27T08:47:31.888Z",
+        "title": "69d46198263aef1e2434b8db8626cc9c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:52:38.454Z",
+        "to": "2018-09-27T08:52:38.454Z",
+        "title": "b7e6fc5c0e49164db8f0987bb4725427",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:53:12.980Z",
+        "to": "2018-09-27T08:53:43.265Z",
+        "title": "dca19487939501c0a0564d7337528316",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:54:52.431Z",
+        "to": "2018-09-27T08:54:52.431Z",
+        "title": "6e72541c42e6c6c486c2ccb2547fe149",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T08:56:32.364Z",
+        "to": "2018-09-27T08:56:32.364Z",
+        "title": "a0fe381f27e0da35e93370be3c13048d",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T09:01:15.069Z",
+        "to": "2018-09-27T09:01:15.069Z",
+        "title": "e74bc2883fc7ad26f5c7ab37acd6bdd8",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T09:01:23.037Z",
+        "to": "2018-09-27T09:07:18.162Z",
+        "title": "6b00d2840c0050317f6f2394d9887f3c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T09:06:23.734Z",
+        "to": "2018-09-27T09:06:23.734Z",
+        "title": "7856a33c375ec12128ee74152c1da854",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T09:07:31.678Z",
+        "to": "2018-09-27T09:11:05.155Z",
+        "title": "b136b17812f0aee94c4dc11e7078b583",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T09:08:35.116Z",
+        "to": "2018-09-27T09:08:35.116Z",
+        "title": "1db818615e717a841573c6fc1f3e0d27",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T09:11:12.554Z",
+        "to": "2018-09-27T09:11:12.554Z",
+        "title": "d51f54fd3ee1cea5497b811aa2b40ed4",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T10:26:08.585Z",
+        "to": "2018-09-27T10:26:08.585Z",
+        "title": "52dcabac275709db095e1e41c5809f97",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T10:27:30.868Z",
+        "to": "2018-09-27T10:27:57.311Z",
+        "title": "c2fc4decf278c104800fc55602a7675e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T10:28:11.726Z",
+        "to": "2018-09-27T10:30:10.733Z",
+        "title": "5783d181c23ef946665dbeec8eeb6936",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T10:29:51.886Z",
+        "to": "2018-09-27T10:29:51.886Z",
+        "title": "eeccd7c651ceb25e476f776dbc1eea3d",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:03:52.440Z",
+        "to": "2018-09-27T11:42:15.885Z",
+        "title": "e2585c0ccab6d49e13447d41c59a415e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:38:23.975Z",
+        "to": "2018-09-27T11:38:23.975Z",
+        "title": "4bca65922c1645acb792841d8cc1bd3d",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:38:42.989Z",
+        "to": "2018-09-27T11:39:20.847Z",
+        "title": "f34bef5531cbfa3547c9bc2d80fc6233",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:39:42.183Z",
+        "to": "2018-09-27T11:39:42.183Z",
+        "title": "e3abe7f79688ef8bb70c22cc1e810925",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:39:57.342Z",
+        "to": "2018-09-27T11:39:57.342Z",
+        "title": "c3487e93e85cbc56d19fa528a3e7ea01",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:42:36.858Z",
+        "to": "2018-09-27T11:42:36.858Z",
+        "title": "6beacba00b13acce8daa32ff623bf5d0",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:44:45.134Z",
+        "to": "2018-09-27T11:44:45.134Z",
+        "title": "2b0af4728a9b53b1f3f95957361229f5",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:44:47.969Z",
+        "to": "2018-09-27T11:44:47.969Z",
+        "title": "24f9e1d96205e4fee3fb3255d6881320",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T11:56:48.382Z",
+        "to": "2018-09-27T11:56:48.382Z",
+        "title": "03bf87425937572972718d426638c859",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T14:00:16.586Z",
+        "to": "2018-09-27T14:00:16.586Z",
+        "title": "ed51e67a8dbd2d183b280e95c9391e22",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T14:00:35.103Z",
+        "to": "2018-09-27T14:00:35.103Z",
+        "title": "53f78be3a97fa05bf9a27df1c81e0d6a",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T14:00:56.838Z",
+        "to": "2018-09-27T14:01:20.933Z",
+        "title": "16c8ceac8d0a3645a577264c4a76a21b",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-27T14:02:00.668Z",
+        "to": "2018-09-27T14:02:00.668Z",
+        "title": "ebff66b79332c023e94aae8d3ea9cd7a",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T07:47:41.780Z",
+        "to": "2018-09-28T07:51:52.925Z",
+        "title": "4ef9b3b49d6754b4fec13b2b4985cc43",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T07:48:15.655Z",
+        "to": "2018-09-28T07:48:53.247Z",
+        "title": "11995c460e6e2dbe6e53e98cab4212a3",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T07:51:20.678Z",
+        "to": "2018-09-28T07:51:20.678Z",
+        "title": "bd1b1b8a217eb5dd540c38614aa9720e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T07:54:10.511Z",
+        "to": "2018-09-28T07:54:10.511Z",
+        "title": "f38d4de9234e5bbfd5ed991c30875b54",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T08:13:49.267Z",
+        "to": "2018-09-28T08:13:49.267Z",
+        "title": "2d831a10c8dcb111bf83e2bd46adeb0a",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T08:19:41.934Z",
+        "to": "2018-09-28T08:19:41.934Z",
+        "title": "cd636a4ea5cff869470dfb21db4b16b6",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T08:19:48.162Z",
+        "to": "2018-09-28T08:19:48.162Z",
+        "title": "270cfb9e5d0f095ce90d50d1bb0f6f00",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T08:19:53.183Z",
+        "to": "2018-09-28T08:20:12.328Z",
+        "title": "74e76edaf58313d2a142123bf30adf92",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T08:21:11.233Z",
+        "to": "2018-09-28T08:21:11.233Z",
+        "title": "8cbc37c2f8c02b4e961f037128bd4921",
+        "label": [
+            "anonymous:"
+        ],
+        "group": [
+            "anonymous:"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-09-28T08:21:32.048Z",
+        "to": "2018-09-28T08:23:36.327Z",
+        "title": "8dece07d37a66ba7bdc41780ad152663",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T10:56:52.712Z",
+        "to": "2018-10-01T10:57:43.038Z",
+        "title": "655b9a1bf22b458c3f4861d1cb110d3f",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T10:57:19.632Z",
+        "to": "2018-10-01T11:06:15.809Z",
+        "title": "ef4198054be314260ba08a6931b35b21",
+        "label": [
+            "raedle:github"
+        ],
+        "group": [
+            "raedle:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T11:02:51.588Z",
+        "to": "2018-10-01T11:02:51.588Z",
+        "title": "df10da73f9fb16dfe4b846e02ed3bcd5",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T11:06:22.291Z",
+        "to": "2018-10-01T11:06:22.291Z",
+        "title": "e9bdfbe68f2e4b2466870c5bfde9afbb",
+        "label": [
+            "raedle:github"
+        ],
+        "group": [
+            "raedle:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T11:13:41.359Z",
+        "to": "2018-10-01T11:13:41.359Z",
+        "title": "b8a1800593b08d6648e47361f51c795c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T11:13:49.149Z",
+        "to": "2018-10-01T11:13:49.149Z",
+        "title": "56727aa7bf9062aab4e128c7f93b323c",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T11:14:08.425Z",
+        "to": "2018-10-01T11:14:20.835Z",
+        "title": "7c2961c16e6bdfec34173d0337ac1db5",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-01T11:14:48.670Z",
+        "to": "2018-10-01T11:14:54.934Z",
+        "title": "e5d1e44ae25c0520581cb6f099ce3345",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-02T12:37:33.815Z",
+        "to": "2018-10-02T12:37:33.815Z",
+        "title": "7eb8c8417deef4f3c824148691204d76",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-02T12:38:02.536Z",
+        "to": "2018-10-02T12:38:36.691Z",
+        "title": "a9b5b24c77577d2669cba10cd3acd63e",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-04T12:26:35.480Z",
+        "to": "2018-10-04T12:26:35.480Z",
+        "title": "32163e31a02044a1cfa58f388277e377",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-04T12:26:47.647Z",
+        "to": "2018-10-04T12:26:47.647Z",
+        "title": "9b831e8f7231ab28032804dac23526f4",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-04T12:26:51.162Z",
+        "to": "2018-10-04T12:26:51.162Z",
+        "title": "546b15a118a7a6485823579e33d80500",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-04T12:27:13.630Z",
+        "to": "2018-10-04T12:28:44.997Z",
+        "title": "1933e39b7be7f5c533e2b0d1d2c2ef45",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-05T09:11:31.302Z",
+        "to": "2018-10-05T09:11:31.302Z",
+        "title": "548ca739d7dc6e7c64b5a00822bbac82",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T10:34:45.367Z",
+        "to": "2018-10-11T10:34:45.367Z",
+        "title": "e741cc16818a90554d1c168a46186475",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T10:34:59.619Z",
+        "to": "2018-10-11T10:34:59.619Z",
+        "title": "28c5357a1509fe10cfb1c918189d0f79",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T10:35:05.247Z",
+        "to": "2018-10-11T10:35:05.247Z",
+        "title": "d947e0e18354527ec1c711b4c4170dc8",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T10:35:29.356Z",
+        "to": "2018-10-11T10:35:29.356Z",
+        "title": "96f7c78b77dcef1c7c04cf4c2c669ed5",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T12:04:53.701Z",
+        "to": "2018-10-11T12:05:25.537Z",
+        "title": "ef65c761a95befe83ae6f449b8d452e2",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T12:05:58.476Z",
+        "to": "2018-10-11T12:06:11.676Z",
+        "title": "48064189c77ae6c90262414046907250",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-11T12:06:23.735Z",
+        "to": "2018-10-11T12:06:23.735Z",
+        "title": "33d37ba155e26e9f89c9a86a6eeb9cd3",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-12T09:10:26.420Z",
+        "to": "2018-10-12T09:10:26.420Z",
+        "title": "a9eec697663bbb9831752ccdcdd09134",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-12T09:10:32.709Z",
+        "to": "2018-10-12T09:10:32.709Z",
+        "title": "cf93f85f34f78b5e4a0c49bbdded81c4",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-12T09:10:52.658Z",
+        "to": "2018-10-12T09:11:43.315Z",
+        "title": "d6375aeef491dac7801c8b3696a4eaac",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2018-10-12T09:12:54.679Z",
+        "to": "2018-10-12T09:12:54.679Z",
+        "title": "e1fb834c9cea34eb9204b3362895d711",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    },
+    {
+        "from": "2019-02-07T07:34:32.570Z",
+        "to": "2019-02-07T07:34:32.570Z",
+        "title": "5abc0fa25f3a295206447c6c75d92cdb",
+        "label": [
+            "cklokmose:github"
+        ],
+        "group": [
+            "cklokmose:github"
+        ],
+        "className": "entry--point--default"
+    }
+]
+exports = Object.assign(exports, {dt})</pre></div><div class="paragraph code-paragraph" data-id="r7SPFVAa" name="timeline-component" last-execution-state="success"><pre data-type="content" type="text/javascript" id="timeline-component">// SOLVED: import timeline in a different file
+// SOLVED: mixing for fetched data
+// SOLVED: make a simple interface for selections
+// SOLVED: make watchers for selections
+//// SOLVED: fetch htmls on update
+//// INFO: don't need them, v-model brings this functionality
+
+
+importLib([
+  "Vs.min.js",
+]).then(() =&gt; {
+
+  console.log(Vs.d3Timeline)
+
+  const sessionData = require("#session-data").dt
+  // console.log("sessionData", sessionData)
+
+ 
+  const dataFetchMixin = require("#data-fetch-mixin").dataFetchMixin
+  const dataObjectsCreator = require("#data-objects-creator").dataObjectsCreator
+
+  // const cmc = require("#context-menu-component")
+
+
+  const TimelineComponent = Vue.component('timeline', {
+    mixins: [dataFetchMixin, dataObjectsCreator],
+    components: {
+      'd3-timeline': Vs.d3Timeline,
+      //'c-m-c': cmc.cmc
+    },
+    data: () =&gt; ({
+      // sessionObject: {}, // INFO: use value from store instead
+      // selected: 'hungry-cat-75', // INFO: initial value
+      currentMode: "",
+      modes: [],
+      options: [],
+      dt: [],
+      sessionGrouped: '',
+      versioningParsed: "",
+    }),
+    template: `
+
+&lt;div&gt;
+
+    &lt;d3-timeline
+      v-bind:data="dt"
+      width="100%"
+      height="300px"
+      &gt;
+    &lt;/d3-timeline&gt;
+ 
+ 
+        &lt;select v-model="selected"&gt;
+          &lt;option v-for="option in options" v-bind:value="option"&gt;
+               {{ option }}
+          &lt;/option&gt;
+        &lt;/select&gt;
+ 
+ &lt;select v-model="currentMode"&gt;
+          &lt;option v-for="mode in modes" v-bind:value="mode"&gt;
+               {{ mode }}
+          &lt;/option&gt;
+        &lt;/select&gt;
+&lt;/div&gt;
+  `,
+    computed: {
+      selected: { // INFO: if contextMenuContext is "", then default
+        get() {
+          // return this.$store.state.obj.message
+          return this.$store.state.contextMenuObject === '' ?
+            this.$store.state.webstrateId :
+            this.$store.state.contextMenuObject
+        },
+        set(value) {
+          this.$store.commit('changeCurrentWebstrateId', value)
+        }
+      },
+      sessionObjectComp() {
+        return this.sessionObject
+      }
+    },
+    // SOLVED: get rid of some of the watchers
+    // TODO: keep data of the webstrate
+    // watch: {
+    //   selected: async function() {
+
+    //     this.$store.commit("changeCurrentWebstrateId", this.selected)
+
+    //   let versioningParsed = await this.getOpsJsonMixin(this.selected)
+    // let sessionGrouped = await this.processData(versioningParsed)
+    // this.sessionGrouped = sessionGrouped
+
+    //this.dt = await this.createDataObject(sessionGrouped)
+    //console.log("Updated in timeline-component")
+    //}
+    // },
+    //   created: async function() {
+    //         var DaysPromise = await this.fetchDaysOverview((new Date))
+    //       this.options = this.listOfWebstrates(DaysPromise)
+    //  },
+    methods: {
+
+      testSelectRangeMethodSessions: function(dateTimeStart, dateTimeEnd) {
+
+        var session = this.sessionGrouped
+        console.log("session = ", session);
+        // console.log(this.data)
+
+        var filtered = session.filter(object =&gt; {
+          // return object.values.some((el) =&gt; { // filters objects without this date
+          return object.connectTime &gt; dateTimeStart &amp;&amp;
+            object.maxConnectTime &lt; dateTimeEnd
+          // })
+        })
+
+        console.log(filtered)
+
+        this.$store.commit("changeSliderVersions", [filtered[0].minVersion, filtered[filtered.length - 1].maxVersion])
+
+        console.log(this.$store.state.sliderVersions)
+        console.log("selected timeline:", this.$store.state.webstrateId)
+
+        this.$refs.ct.$refs.menu.open(this.$event, this.$store.state.contextMenuObject)
+
+
+      },
+
+      processData: function(versioningParsed) {
+
+        console.log("Version Object", versioningParsed)
+
+        // TODO: put into mixins later
+        var sessionObject = versioningParsed.map(element =&gt; ({
+          timestamp: element.m.ts,
+          version: element.v,
+          sessionId: (Object.keys(element).indexOf("session") !== -1) ? element.session.sessionId : 0,
+          connectTime: (Object.keys(element).indexOf("session") !== -1) ? element.session.connectTime : 0,
+          userId: (Object.keys(element).indexOf("session") !== -1) ? element.session.userId : 0
+        }))
+
+        // INFO: filtering non-sessions
+        sessionObject = Object.keys(sessionObject).map(key =&gt; sessionObject[key])
+          .filter(element =&gt; (element.sessionId !== 0))
+
+        console.log("sessionObject = ", sessionObject);
+
+        this.$store.commit("changeCurrentSessionObject", sessionObject)
+
+        // making Set to identify unique session and max/min
+        var sessionGrouped = _.chain(sessionObject)
+          .groupBy("sessionId")
+          .map(session =&gt; ({
+            "sessionId": session[0]['sessionId'],
+            "connectTime": session[0]['connectTime'],
+            "users": [...new Set(_.map(session, "userId"))],
+            "maxConnectTime": _.maxBy(session, "timestamp")['timestamp'],
+            "minConnectTime": _.minBy(session, "timestamp")['timestamp'],
+            "maxVersion": _.maxBy(session, "timestamp")['version'],
+            "minVersion": _.minBy(session, "timestamp")['version']
+          })).value()
+
+        // console.log("sessionGrouped = ", sessionGrouped);
+        console.log('Data is Processed Successfully, session-grouped:', sessionGrouped)
+
+        this.sessionGrouped = sessionGrouped
+        return sessionGrouped
+      },
+      createDataObject: function(sessionGrouped) { // INFO: updating vue vis component
+
+        return sessionGrouped.map(int =&gt; ({
+          from: new Date(int.minConnectTime),
+          to: new Date(int.maxConnectTime),
+          title: int.sessionId,
+          label: int.users,
+          group: int.users,
+          className: 'entry--point--default'
+        }))
+
+        // console.log('Data Object is Created Successfully: ', sessionGrouped)
+      },
+    },
+    async mounted() {
+
+
+      console.log(sessionData)
+
+      this.selected = "dull-warthog-73"
+      // let versioningParsed = await this.getOpsJsonMixin(this.selected)
+     //  console.log(versioningParsed)
+      // let sessionGrouped = await this.processData(versioningParsed)
+      // this.dt = await this.createDataObject(sessionGrouped)
+      // console.log('Data Object is Created Successfully: ', this.dt)
+
+      sessionData.forEach((el) =&gt; el.from = new Date(el.from))
+      sessionData.forEach((el) =&gt; el.to = new Date(el.to))
+      sessionData.forEach((el) =&gt; {
+        el.group = el.group[0]
+        el.label = el.label[0]
+      })
+
+      this.dt = sessionData
+      
+     var input = this.selected
+		var current = input !== "undefined" ? input : this.selected
+		var fetched = fetch(window.serverAddress + current + "/?ops")
+  .then((html) =&gt; {
+    return html.json()
+  })
+  .then((body) =&gt; {
+    console.log('Fetched:\n', current)
+    this.versioningRaw = body
+    return body
+  })
+
+
+
+    },
+
+  });
+
+  // console.log("TimelineComponent", TimelineComponent)
+  exports = Object.assign(exports, {
+    TimelineComponent
+  })
+
+})
+</pre></div><div class="paragraph code-paragraph" data-id="724e9cMS" name="server-utils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="server-utils">const getServer = () =&gt; {
+
+    var serverAddress;
+
+    if (window.location.href.indexOf("webstrates.r2.enst.fr") &gt; -1) {
+            return 'https://webstrates.r2.enst.fr/'
+    } else {
+              return 'https://webstrates.cs.au.dk/'
+    }
+}
+
+const serverAddress = getServer()
+
+exports = Object.assign(exports, {serverAddress})</pre></div><div class="paragraph code-paragraph" data-id="ymYJBzbt" last-execution-state="success"><pre data-type="content" type="text/javascript">const serverUtils = require("#server-utils")
+var input = "dull-warthog-73"
+var current = input !== "undefined" ? input : this.selected
+
+var fetched = fetch(serverUtils.serverAddress + current + "/?ops")
+        .then((html) =&gt; {
+              return html.json()
+       })
+        .then((body) =&gt; {
+             console.log('Fetched:\n', current)
+             this.versioningRaw = body
+             return body
+  })
+console.log(fetched)</pre></div><div class="paragraph code-paragraph collapsed" data-id="bK4yQYtc" name="dom-tree-d3-component"><pre data-type="content" type="text/javascript">
+const diffVueComponent = require("#diff-vue-component")
+const vueSlider = require("#vue-slider")
+
+// Mixins:
+const dataFetchMixin = require("#data-fetch-mixin")
+const networkUpd = require("#network-mixin-upd")
+
+const DomTreeD3Component = Vue.component('dom-tree-d3', {
+        mixins: [dataFetchMixin, networkUpd],
+        props: ["webstrateId", "initialVersion", "latestVersion"],
+        components: {
+            'diff-vue-component': diffVueComponent,
+            'vue-slider': vueSlider
+        },
+        template: `
+
+&lt;div&gt;
+
+&lt;br&gt;
+&lt;br&gt;
+
+&lt;vue-slider-configured &gt;
+  &lt;/vue-slider-configured&gt;
+
+&lt;br&gt;
+&lt;br&gt;
+
+    &lt;!-- &lt;button @click="codestrateMode"&gt;Codestrate Mode&lt;/button&gt; --&gt;
+
+
+&lt;br&gt;
+&lt;br&gt;
+         &lt;input v-model="selectedFilterOptions" placeholder="html element"&gt;
+         &lt;p&gt;Message is: {{ selectedFilterOptions }}&lt;/p&gt;
+
+
+&lt;br&gt;
+&lt;br&gt;
+
+         &lt;input v-model="selectedElementFilterOptions" placeholder="element attribute"&gt;
+         &lt;p&gt;Message is: {{ selectedElementFilterOptions }}&lt;/p&gt;
+
+&lt;br&gt;
+&lt;br&gt;
+
+         &lt;input v-model="selectedElementValueOptions" placeholder="value"&gt;
+         &lt;p&gt;Message is: {{ selectedElementValueOptions }}&lt;/p&gt;
+
+&lt;br&gt;
+&lt;br&gt;
+
+&lt;b-container class="container-fluid"&gt;
+
+&lt;b-row&gt;
+  &lt;b-col sm="9"&gt;
+    &lt;diff-vue-component 
+              :rootInstanceProp="currentToChild"
+              :currentNode="$store.state.currentNode"
+              mode="patch"&gt;
+    &lt;/diff-vue-component&gt;
+  &lt;/b-col&gt;
+&lt;/b-row&gt;
+
+  &lt;b-row&gt;
+    &lt;b-col class="col-md-6"&gt;
+      &lt;div class="treeD3" id="tree-container"&gt;
+      &lt;/div&gt;
+      &lt;svg
+        id="svgMain"
+        :width="width" :height="dx" 
+        :viewBox="viewBoxConst"
+        style="font: 10px sans-serif; user-select: none;"&gt;
+
+        &lt;g
+          id="gLink"
+          fill="none" stroke="#555" stroke-opacity="0.4" stroke-width="1.5"&gt; &lt;/g&gt;
+        &lt;g
+          id="gNode"
+          cursor="pointer"&gt; &lt;/g&gt; 
+      &lt;/svg&gt;
+    &lt;/b-col&gt;
+
+  &lt;/b-row&gt;
+
+&lt;/b-container&gt;
+
+&lt;/div&gt;
+        `,
+        data: () =&gt; ({
+            selectedFilterOptions: '',
+            selectedElementFilterOptions: '',
+            selectedElementValueOptions: '',
+            initSelected: '',
+            isInitiated: false,
+            inputVersion: '',
+            currentInnerText: '',
+            htmlString: '',
+            htmlStringLatest: '',
+            currentVersionSentences: [],
+            codestrateModeFlag: false, // INFO: used to color/filter children if codestrate mode is enabled
+        }),
+        methods: {
+            debounce: function(func, wait, immediate) {
+
+                var timeout;
+
+                return function() {
+                    var context = this,
+                        args = arguments;
+
+                    var callNow = immediate &amp;&amp; !timeout;
+
+                    clearTimeout(timeout);
+
+                    timeout = setTimeout(function() {
+
+                        timeout = null;
+
+                        if (!immediate) {
+                            func.apply(context, args);
+                        }
+                    }, wait);
+
+                    if (callNow) func.apply(context, args);
+                }
+            },
+            /**
+             * used to bind sqEnhanced for Codestrate mode
+             * @param {any} codestrateMode
+             */
+            instantiateWatchers: function(codestrateMode) {
+
+                function findSelectedInList(list, propertyName, newPropertyName, newPropertyValue) {
+                    let condition;
+                    if (typeof Object.values(list) != "undefined" &amp;&amp; typeof Object.values(list) != null) {
+                        Object.values(list).some((currentItem) =&gt; {
+                            if (typeof currentItem != null) {
+                                if (typeof currentItem[propertyName] != "undefined" | typeof currentItem[propertyName] != null) {
+
+                                    if (Array.isArray(currentItem) !== true) {
+                                        currentItem[newPropertyName] = newPropertyValue
+                                    }; // INFO: important to put semicolon
+
+                                    if (typeof currentItem.children != "undefined") {
+                                        findSelectedInList(currentItem.children, propertyName, newPropertyName, newPropertyValue)
+                                    }
+
+                                }
+                            }
+                        })
+                    }
+                    return list
+                }
+
+                var initFun,
+                    arguments;
+
+                // INFO: if method is called with the webstrate mode
+                // assigning corresponding function with arguments
+                if (codestrateMode === true) {
+
+                    initFun = this.initEnhanced
+                    arguments = [undefined, undefined, {
+                        attributeName: "class",
+                        attributeValue: "section section-visible"
+                    }, true]
+
+                } else {
+
+                    initFun = this.init
+                    arguments = [undefined, undefined]
+
+                }
+
+
+                // INFO: I am waiting for data processing above and building united tree here
+                this.$watch(
+                    (vm) =&gt; ([vm.d3Data, vm.d3DataLatest]), val =&gt; {
+
+                        // let typingTimer; // timer identifier
+                        // let doneTypingInterval = 1000; // time in ms (5 seconds)
+
+                        // function accomplish() {
+                        this.removeChildren("initial")
+
+                        // FIXME: WTF?
+                        var t1 = findSelectedInList(this.d3Data, "name", "alignment", "left"),
+                            t2 = findSelectedInList(this.d3DataLatest, "name", "alignment", "right")
+
+                        var merged = [];
+                        merged = merged.concat(t1, t2)
+
+                        var containerLatest = {
+                            name: "main",
+                            children: merged
+                        }
+
+                        var selectorsInst = this.getSelectors(false, "initial")
+                        this.rootInstance = this.root(containerLatest)
+                        this.update(this.rootInstance, selectorsInst)
+                        // }
+
+                        // clearTimeout(typingTimer);
+                        // typingTimer = setTimeout(accomplish.bind(this), doneTypingInterval);
+
+
+                    }, {
+                        immediate: false
+                    }
+                )
+
+                // SOLVED: divide update logic into new Webstrate and
+                // INFO: watcher for Initial version update
+                this.$watch(
+                    (vm) =&gt; (vm.$store.getters.initialVersionGet), async val =&gt; {
+
+                        console.dir("Initial Version Update")
+
+                        var webstrateId = this.$store.state.webstrateId
+                        var initialVersion = this.$store.state.sliderVersions[0]
+
+                        var containerTmp = await this.getHtmlsPerSessionMixin(webstrateId,
+                            undefined, undefined,
+                            true, initialVersion)
+
+                        this.htmlString = containerTmp
+                        this.htmlObject = new DOMParser().parseFromString(this.htmlString, "text/html")
+
+                        this.d3Data = await initFun(...[this.htmlObject].concat(arguments))
+
+                    }, {
+                        immediate: false
+                    }
+                )
+
+                // INFO: watcher for Latest version update
+                this.$watch(
+                    (vm) =&gt; (vm.$store.getters.latestVersionGet), async val =&gt; {
+
+                        var smth = this.debounce(async () =&gt; {
+
+                            console.log("Latest Version update")
+                            var webstrateId = this.$store.state.webstrateId
+                            var latestVersion = this.$store.state.sliderVersions[1]
+
+                            var containerTmp = await this.getHtmlsPerSessionMixin(webstrateId,
+                                undefined, undefined,
+                                true, latestVersion)
+
+                            this.htmlStringLatest = containerTmp
+                            this.htmlObjectVersioned = new DOMParser().parseFromString(this.htmlStringLatest, "text/html")
+                            this.d3DataLatest = await initFun(...[this.htmlObjectVersioned].concat(arguments))
+
+                        }, 1000)
+
+                        smth()
+
+
+                    }, {
+                        immediate: false
+                    }
+                )
+
+
+                // FIXME: it seems that the main issue here is that html.Object is not created or is wrong
+                this.$watch((vm) =&gt; (vm.selectedFilterOptions, vm.selectedElementFilterOptions, vm.selectedElementValueOptions), async val =&gt; {
+
+
+                    console.dir("Dom Filter is Applied, Tree is processing")
+                    this.removeChildren("initial")
+
+                    var filter = {
+                        attributeName: this.selectedElementFilterOptions,
+                        attributeValue: this.selectedElementValueOptions
+                    }
+
+                    // TODO: filter is not working right now
+                    // FIXME: multiple filters
+                    this.d3Data = await this.initEnhanced(this.htmlObject, undefined, undefined, filter, true)
+                    this.d3DataLatest = await this.initEnhanced(this.htmlObjectVersioned, undefined, undefined, filter, true)
+                    // }
+
+                    // clearTimeout(typingTimer);
+                    // typingTimer = setTimeout(accomplish.bind(this), doneTypingInterval);
+
+
+                })
+
+
+                // INFO: watcher for webstrate update
+                // INFO: also, if WS is trancluded, use different mechanism of accessing the dom 
+                this.$watch(
+                    (vm) =&gt; (vm.$store.state.webstrateId), async val =&gt; {
+
+                        // setup before functions
+                        // let typingTimer; // timer identifier
+                        // let doneTypingInterval = 1000; // time in ms (5 seconds)
+
+                        // async function accomplish() {
+                        console.dir("watcher for webstrate update")
+
+                        var webstrateId = this.$store.state.webstrateId,
+                            initialVersion = this.$store.getters.initialVersionGet,
+                            latestVersion = this.$store.getters.latestVersionGet
+
+                        let containerTmp = await this.getHtmlsPerSessionMixin(webstrateId,
+                            initialVersion, latestVersion, false)
+
+                        this.htmlString = containerTmp[0]
+                        this.htmlStringLatest = containerTmp[1]
+
+                        this.htmlObject = new DOMParser().parseFromString(this.htmlString, "text/html")
+                        this.htmlObjectVersioned = new DOMParser().parseFromString(this.htmlStringLatest, "text/html")
+
+                        // SOLVED: make init to have an input
+
+                        this.d3Data = await initFun(...[this.htmlObject].concat(arguments))
+                        this.d3DataLatest = await initFun(...[this.htmlObjectVersioned].concat(arguments))
+                        // }
+
+                        // clearTimeout(typingTimer);
+                        // typingTimer = setTimeout(accomplish.bind(this), doneTypingInterval);
+
+                    }, {
+                        immediate: false
+                    }
+                )
+
+                this.$watch(
+                    // INFO: watching for data and creating prop for child component
+                    vm =&gt; (vm.rootInstance), val =&gt; {
+
+                        // let typingTimer; // timer identifier
+                        // let doneTypingInterval = 1000; // time in ms (5 seconds)
+                        // function accomplish() {
+
+                        // INFO: this as a prop to childthis.currentVersionSentences
+                        // INFO: first goes earlier versions
+                        var containerVersionSentences = []
+
+                        // FIXME: eliminate
+                        containerVersionSentences.push({
+                            'data': this.rootInstance.data,
+                            // 'field': "name",
+                            // 'value': "VDnPvJ36"
+                        })
+
+                        this.currentVersionSentences = containerVersionSentences // INFO: to avoid evoking component before data is ready
+                        // }
+
+                        // clearTimeout(typingTimer);
+                        // typingTimer = setTimeout(accomplish.bind(this), doneTypingInterval);
+
+                    },
+                )
+
+            }
+
+        },
+        computed: {
+            currentToChild() {
+                return this.currentVersionSentences
+            },
+        },
+        created() {},
+        async mounted() {
+
+            if (this.$route.path === "/transclude-codestrate-component") {
+                this.instantiateWatchers(true)
+            } else {
+                this.instantiateWatchers(false)
+            }
+
+        }
+    })
+
+})</pre></div><div class="paragraph body-paragraph" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"><div unapproved=""><div unapproved="" class="d3-metric" id="tmp" style="width: 100%; height: 600px;"><svg unapproved="" width="960" height="600"><g unapproved="" transform="translate(0, 0)"><text unapproved="" text-anchor="middle" x="480" y="0" dy="0.32em" fill="#000" fill-opacity="0.5" font-size="12" font-weight="400"></text></g><g unapproved="" transform="translate(0, 0)"><text unapproved="" text-anchor="middle" x="480" y="300" dy="0.32em" fill="#000000" fill-opacity="0.5" font-size="120" font-weight="900">45,000</text></g></svg></div></div></div></div></div>
