@@ -1,4 +1,4 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph collapsed" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
 	"version"    : "0.3.9",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
@@ -27,7 +27,7 @@
 		"url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
 		"folder": "packages/USFYpDV9-codestrates-cell-versioning-package"
 	}
-}</pre></div><div class="paragraph code-paragraph" data-id="zRmB9PSK" last-execution-state="success" name="helperFunctions"><pre data-type="content" type="text/javascript" id="helperFunctions">const compareArrays = (array1, array2) =&gt; {
+}</pre></div><div class="paragraph code-paragraph collapsed" data-id="zRmB9PSK" last-execution-state="success" name="helperFunctions"><pre data-type="content" type="text/javascript" id="helperFunctions">const compareArrays = (array1, array2) =&gt; {
     return array1.length === array2.length &amp;&amp; array1.every((value, index) =&gt; value === array2[index])
 }
 
@@ -61,7 +61,13 @@ const compareSort = (a, b) =&gt; {
 const uuid = function b(a){return a?(a^Math.random()*16&gt;&gt;a/4).toString(16):([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,b)}
 
 
-exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort, uuid})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI">
+const getRandomArbitrary = (min, max) =&gt; {
+    return Math.random() * (max - min) + min;
+}
+
+
+exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort, 
+                                  uuid, getRandomArbitrary})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3aj5B6jC" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI">
 
 // coreEvents
 const coreEventsModule = {};
@@ -2160,7 +2166,7 @@ coreEvents.createEvent('receivedOpsStlk', { idempotent: true });
 // };
 
 
-exports = Object.assign(exports, {coreEventsModule})
+exports = Object.assign(exports, {coreEventsModule, PathTree})
 </pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// FIXME: make it smooth
 //// FIXME: get rid of timeouts
 
@@ -2323,60 +2329,73 @@ const sortNclear = async (ind) =&gt; {
 // returns promise with opsApplied to update the indcator of the current state
 const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMode) =&gt; {
   
-
-  // var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
-  var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode   
+  // FIXME: I need to apply op to the transient pre instead of the original
+  
+  var rootTmp = document.querySelector("pre[versioning-id-to-remove='" +
+                                             paragraph.getAttribute("name") + "']" )
+  
+  // var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode 
+  
+  console.log("Applying Op to this element", rootTmp)
+  console.log("Paragraph", paragraph)
+  
+  
   var opInst = await ops;
   
- 
   // choose next op based on the current one to apply
   // index of opInst.opsOb is relative, absolute is used in UI (version)
 	// derfor, filter opsOb and pass the proper absolute/relative indexes
   // TODO: try to use a linked list here
   var opTry;
+  
+  // Fix for the forward mode
+  
+  // first, find index within object of the current version
+  var unIndex;
+  
+  console.log("Test Forward")
+  
+  console.log("Test forward", opInst.opsOb.findIndex(el =&gt; {return el.version == stateSelection.version}) &amp;&amp; opInst.opsOb[opInst.opsOb.findIndex(el =&gt; {return el.version == stateSelection.version}) + 1] == undefined)
+  
+  unIndex = operationalMode == "forward"
+    ? opInst.opsOb.findIndex(el =&gt; {return el.version == stateSelection.version}) &amp;&amp; opInst.opsOb[opInst.opsOb.findIndex(el =&gt; {return el.version == stateSelection.version}) + 1] == undefined
+    : opInst.opsOb.findIndex(el =&gt; {return el.version == stateSelection.version})
+
+  // opInst.opsOb.findIndex(el =&gt; {return el.version == stateSelection.version})
+	var unOp = typeof unIndex != "boolean" &amp;&amp; opInst.opsOb[unIndex]
 
   return new Promise((resolve,reject) =&gt; {
 
-  if (operationalMode === "backward") {
+  if (operationalMode === "backward" &amp;&amp; unIndex &gt; -1) {
     
-    // first, find index within object of the current version
-		var prIndex = opInst.opsOb.reduce((acc, op, index) =&gt; {
-          return op.version == stateSelection.version &amp;&amp; index}, 
-                                          {})
-		// after, find the previous index
-		var previousOp = opInst.opsOb[prIndex]
-
-    
-  // var previousOp = opInst.opsOb.filter(op =&gt; {return op.version === stateSelection.version - 1 &amp;&amp; op})
-  opTry = previousOp.realOp
-  opTry.p = opTry.p.splice(-2)
+  opTry = unOp.realOp
+  opTry.p = opTry.p.splice(-2) 
+  console.log("Applying this op:", unOp)
     
   // SOLVED: main issue is that I need real ops, not helper objects I created
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
     
-  console.log("Previous op", previousOp)
-  resolve(previousOp)
+  resolve(unOp)
     
     
-  } else if (operationalMode === "forward") {
+  } else if (operationalMode === "forward" &amp;&amp; unIndex &gt; -1) {
     
-    var nxtIndex = opInst.opsOb.reduce((acc, op, index) =&gt; {
-          return op.version == stateSelection.version &amp;&amp; index}, 
-                                          {})
-		// after, find the previous index
-		var nextOp = opInst.opsOb[nxtIndex]
-    
-  // var nextOp = opInst.opsOb.filter(op =&gt; {return op.version === stateSelection.version + 1 &amp;&amp; op})
-  opTry = nextOp.realOp
+  opTry = unOp.realOp
   opTry.p = opTry.p.splice(-2)  
     
+  console.log("Applying this op:", unOp)
   coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
     
-  resolve(nextOp)  
+  resolve(unOp)  
     
-  } else {
+  } else if (typeof operationalMode === "undefined") {
     
     console.error("Specify operationalMode!")
+    reject()
+    
+  } else if (unIndex == -1 || typeof unIndex == "boolean" ) {
+    
+    console.error("There is no next/previous version for code chunk: ", stateSelection)
     reject()
     
   }
@@ -2388,12 +2407,33 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
 }
 
 
+// TODO:
+const processOpsContributor = async(paragraph, ops) =&gt; {
+  
+  temp1[0].opsOb.length
+  HelperFunctions.getRandomArbitrary()
+  
+}
+
+// TODO:
+const processOpsState = async(paragraph, ops) =&gt; {
+  
+  
+}
+
+// TODO: return promise
+
 // apply several (how to define the proper scope) operational transformation
 // TODO: number of ops to apply sequentilly 
 // TODO: backward or forward
 const processOpsAndApplyMultiple = async (paragraph, ops, opsQuantity) =&gt; {
     
+  
+  // FIXME: I need to apply op to the transient pre instead of the original
    var rootTmp = paragraph.__pathNodes[0].children[0].DOMNode;
+   console.log("Applying Op to this element", rootTmp)
+  
+  
    var opInst = await ops;
   
   var opsToReturn = []
@@ -2546,6 +2586,7 @@ var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
 </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
 const ParagraphUtils = require("#paragraph-utils");
+const coreWsClientModule = require("#coreWebstratesClientAPI");
 const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
@@ -2575,6 +2616,7 @@ const toggleForwardSuccess = (paragraph) =&gt; {
 ////////
 
 
+// TODO: can't go back/forward notification
 const toggleBackTiny = async (paragraph, operationalMode = "backward") =&gt; {
   
     console.log("Back Tiny");
@@ -2593,7 +2635,7 @@ const toggleBackTiny = async (paragraph, operationalMode = "backward") =&gt; {
   
   
 		await updateEditor(paragraph, meta["ops"]);
-  	await updateIndicators(paragraph, meta);
+  	await updateIndicators(paragraph, meta, "backward");
   
   
 }
@@ -2605,8 +2647,23 @@ const toggleBackCardinal = (paragraph) =&gt; {
     
 }
 
-const toggleForwardTiny = (paragraph) =&gt; {
+const toggleForwardTiny = async (paragraph, operationalMode = "forward") =&gt; {
     console.log("Forward Tiny");
+  
+  	var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
+  	var stateSelection = await chooseOpBeforeApply(paragraph);
+  
+    console.log("localOpsState", localOpsState)
+  	console.log("stateSelection", stateSelection)
+  
+  	var meta = {}
+  
+  	meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
+                                                    stateSelection, operationalMode)
+  
+  
+		await updateEditor(paragraph, meta["ops"]);
+  	await updateIndicators(paragraph, meta, "forward");
     
 }
 
@@ -2659,15 +2716,41 @@ const chooseOpBeforeApply = (paragraph) =&gt; {
    
 
 
+// FIXME: check
 // function for editor update
 // second argument is the promise from opsApply function
 const updateEditor = async (paragraph, promise) =&gt; {
   
-	paragraph.children[2].children[0].remove()
   
-codestrate.editors.CodeMirror
-  .factory.create(paragraph.children[2], // transient element to attach el to
-                  paragraph.children[1]) // content (pre element)
+  // deletes old editor
+		paragraph.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
+  
+  // paragraph.getElementBycodeContainer.setAttribute("versioning-id-to-remove", pg.getAttribute("name"))
+   var codeContainer = document.querySelector("pre[versioning-id-to-remove='" +
+                                              paragraph.getAttribute("name") + "']" )
+   console.log("paragraph Update", paragraph)
+   console.log(codeContainer)
+   console.log(codeContainer.innerText)
+    
+    try {
+      
+    	  codestrate.editors.CodeMirror
+  					.factory.create(paragraph.getElementsByClassName("editor default-editor CodeMirror")[0], 
+                            codeContainer)
+      			           			// paragraph.getElementsByTagName("pre")[0])
+      
+    } catch {
+      	
+      	console.log("Updated Editor")
+      
+    } 
+  
+  // console.log("HERE!", paragraph)
+	// paragraph.children[2].children[0].remove()
+  
+// codestrate.editors.CodeMirror
+  //.factory.create(paragraph.children[2], // transient element to attach el to
+//                  paragraph.children[1]) // content (pre element)
 
     
 }
@@ -2675,25 +2758,28 @@ codestrate.editors.CodeMirror
 // a function to update indicators
 // takes object meta (returned from opsApply) or object from cuex, 
 // if nothing meta is not specified
-// TODO: add/remove indicators and add new variable for this
-const updateIndicators = async (paragraph, meta) =&gt; {
+// FIXME: update indicators based on mode - forward/backward (mode)
+const updateIndicators = async (paragraph, meta, mode) =&gt; {
   
+  var nextVersion = mode === "forward" ? 1 : -1
   
+  // update indicator when entering mode without mutating the version
   if (typeof meta === "undefined") {
    	 
     meta = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex)
     
     
     paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].version
+    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].version // first run
     paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].opMeta.userId
     
   } else {
    	
     console.log("Ops are recieved", meta)
     
+    // showing the version of the next op to be reversed
     paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
+    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version + nextVersion
     paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
     
    }
@@ -2752,12 +2838,23 @@ const enterVersioningMode = async (pg) =&gt; {
           
 		const transientContainer = document.createElement("transient")
     transientContainer.classList.add("transient-save")
+    
+    // FIXME: deep copy already existing node (persisten path Node)
+    // FIXME: check, whether it will be observed
+    
+    // var codeContainer = pg.__pathNodes[0].children[0].DOMNode.cloneNode(true);
+	  // codeContainer.setAttribute("versioning-id-to-remove", pg.getAttribute("name"))
+    
 		const codeContainer = document.createElement("pre");
     const textNode = document.createTextNode(content); 
     codeContainer.setAttribute("versioning-id-to-remove", pg.getAttribute("name"))
 		codeContainer.setAttribute("data-type", "content");
 		codeContainer.setAttribute("type", "text/javascript");
 		codeContainer.appendChild(textNode);
+    
+    
+    coreWsClientModule.PathTree(codeContainer)
+    
 		transientContainer.appendChild(codeContainer);
 		pg.appendChild(transientContainer)
   
@@ -2799,7 +2896,7 @@ codestrate.editors.CodeMirror
 
 exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal,
                                   toggleForwardTiny, toggleForwardCardinal, 
-                                  enterVersioningMode})</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
+                                  enterVersioningMode})</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">
 const VersioningUtils = require("#versioning-utils");
 
 importLib([
@@ -2998,7 +3095,7 @@ importLib([
 // codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
 
 
-</pre></div><div class="paragraph style-paragraph" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
+</pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
 html .paragraph .toggle-versioning-back-cardinal,
 html .paragraph .toggle-versioning-forward-tiny, 
 html .paragraph .toggle-versioning-forward-cardinal,
