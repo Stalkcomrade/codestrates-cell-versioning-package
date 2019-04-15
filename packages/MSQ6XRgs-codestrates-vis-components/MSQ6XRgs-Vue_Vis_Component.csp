@@ -1,7 +1,7 @@
-<div class="section section-visible" data-id="MSQ6XRgs" data-type="package" name="Vue Vis Component" transient-focussed="true"><div class="paragraph body-paragraph" data-id="sAnJXK7f" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" name="Properties" data-id="rhqF64wq"><pre data-type="content" type="application/json" class="section-properties">{
-  "version": "0.1.6",
-  "icon": "your_material_icon_string",
-  "description": "Your short description.",
+<div class="section" data-id="MSQ6XRgs" data-type="package" name="Vue Vis Component"><div class="paragraph body-paragraph" data-id="sAnJXK7f" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" name="Properties" data-id="rhqF64wq"><pre data-type="content" type="application/json" class="section-properties">{
+  "version": "0.1.7",
+  "icon": "show_chart",
+  "description": "vis components for inspecting activities",
   "tags": [
     "vue",
     "vis"
@@ -24,6 +24,7 @@
     }
   ],
   "changelog": {
+    "0.2.0": "ADDED: interface for enabling components per chunk",
     "0.1.6": "checking how vue works in CS",
     "0.1.5": "ADDED: helper functions for transient container + DOM erase.",
     "0.1"  : "Initial version."
@@ -57,7 +58,7 @@ const eraseDom = (paragraphId) =&gt; {
   } 
 }
 
-exports = Object.assign(exports, {createTransientContainer, eraseDom})</pre></div><div class="paragraph code-paragraph" data-id="v3NGx7g5" last-execution-state="success" name="data-fetcher"><pre data-type="content" type="text/javascript" id="data-fetcher">// const userId = 'cklokmose:github' //webstrate.user.userId;
+exports = Object.assign(exports, {createTransientContainer, eraseDom})</pre></div><div class="paragraph code-paragraph collapsed" data-id="v3NGx7g5" last-execution-state="success" name="data-fetcher"><pre data-type="content" type="text/javascript" id="data-fetcher">// const userId = 'cklokmose:github' //webstrate.user.userId;
 // const userId = 'Stalkcomrade:github'
 // SOLVED: Promise for userID? - works without workarounds
 const userId = webstrate.user.userId // const userId = 'Stalkcomrade:github'
@@ -192,7 +193,7 @@ const dataFetcher = (type, options) =&gt; new Promise((resolve, reject) =&gt; {
 exports = Object.assign(exports, {dataFetcher,
                                   checkServer, getServer, watchAuth,
                                   userId, serverAdress, ws
-                                 })</pre></div><div class="paragraph code-paragraph" data-id="c6pcPaAE" last-execution-state="success"><pre data-type="content" type="text/javascript">// console.log(window)
+                                 })</pre></div><div class="paragraph code-paragraph collapsed" data-id="c6pcPaAE" last-execution-state="success"><pre data-type="content" type="text/javascript">// console.log(window)
 // window.location
 const tt = require("#data-fetcher")
 console.log(tt)</pre></div><div class="paragraph code-paragraph collapsed" data-id="pYa4NLfT" name="vuex-store"><pre data-type="content" type="text/javascript" id="vuex-store"> const store = new Vuex.Store({
@@ -2086,8 +2087,7 @@ const slider = Vue.component('vue-slider-configured', {
 })
 }) // import
 
-exports = Object.assign(exports, {slider})</pre></div><div class="paragraph code-paragraph collapsed" data-id="t7ss2up8" name="diff-vue-component"><pre data-type="content" type="text/javascript" id="diff-vue-component">
-// const window.jsdiffTrue = require('diff')
+exports = Object.assign(exports, {slider})</pre></div><div class="paragraph code-paragraph collapsed" data-id="t7ss2up8" name="diff-vue-component"><pre data-type="content" type="text/javascript" id="diff-vue-component">// const window.jsdiffTrue = require('diff')
 
 
 
@@ -2310,7 +2310,7 @@ const diffVueComponent = Vue.component('diff-vue-component', {
     }
 })
 
-exports = Object.assign(exports, {diffVueComponent})</pre></div><div class="paragraph code-paragraph" data-id="Gk2npb9Y" last-execution-state="success" name="metric-component"><pre data-type="content" type="text/javascript" id="metric-component">importLib([
+exports = Object.assign(exports, {diffVueComponent})</pre></div><div class="paragraph code-paragraph collapsed" data-id="Gk2npb9Y" last-execution-state="success" name="metric-component"><pre data-type="content" type="text/javascript" id="metric-component">importLib([
   "Vs.min.js"
 ]).then(() =&gt; {
   
@@ -2409,7 +2409,7 @@ import-lib
 
     
 })
-</pre></div><div class="paragraph code-paragraph" data-id="UgeaMAX5" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="UgeaMAX5" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
   "vue.min.js",
   "vuex.min.js"
 ]).then(() =&gt; {
@@ -2543,7 +2543,7 @@ const Mix1 = Vue.extend({
 })
 
 
-</pre></div><div class="paragraph body-paragraph" data-id="AN4qr7QG" name="vue-test-context"><div data-type="content" type="text/html" contenteditable="true" class="writing" id="vue-test-context"></div></div><div class="paragraph code-paragraph" data-id="rCQWMuXq" last-execution-state="success"><pre data-type="content" type="text/javascript">// var tre = require("#tt1").store
+</pre></div><div class="paragraph body-paragraph" data-id="AN4qr7QG" name="vue-test-context"><div data-type="content" type="text/html" contenteditable="true" class="writing" id="vue-test-context"></div></div><div class="paragraph code-paragraph collapsed" data-id="rCQWMuXq" last-execution-state="success"><pre data-type="content" type="text/javascript">// var tre = require("#tt1").store
 // console.log(tre)
 
 importLib([
@@ -2693,7 +2693,9 @@ exports = Object.assign(exports, {cmc})
 
 })
 
-</pre></div><div class="paragraph code-paragraph" data-id="xirvYp2X" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+</pre></div><div class="paragraph code-paragraph" data-id="xirvYp2X" last-execution-state="success" name="timeline-component-full"><pre data-type="content" type="text/javascript" id="timeline-component-full">exports.drawTimeline = (paragraph) =&gt; {
+ 
+  importLib([
   "vue.min.js",
   "vuex.min.js"
 ]).then(() =&gt; {
@@ -2702,12 +2704,13 @@ exports = Object.assign(exports, {cmc})
   // const cmc = require("#context-menu-component").cmc
   // console.log(cmc)
   // const timelineComponent = require("#timeline-component").TimelineComponent
-//   console.log(timelineComponent)
-  
+  // console.log(timelineComponent)
+  // console.log("timelineComponent", timelineComponent)
+    
+    
+    // console.log(indicator)
   
   const timelineComponent = require("#timeline-component").TimelineComponent
-  // console.log("timelineComponent", timelineComponent)
-  
   const store = require("#vuex-store").store
   const utils = require("#helper-functions")  
   
@@ -2725,7 +2728,9 @@ exports = Object.assign(exports, {cmc})
 
   containerElement.children[0].appendChild(global.$el)
   
-})</pre></div><div class="paragraph body-paragraph locked" data-id="yfwqirjk" name="vue-timeline" transient-fullscreen="false" draggable="false" style=""><div data-type="content" type="text/html" contenteditable="false" id="vue-timeline" class="d"></div></div><div class="paragraph code-paragraph collapsed" data-id="3uPbdhYe" name="session-data"><pre data-type="content" type="text/javascript" id="session-data">const dt = [
+})
+  
+}</pre></div><div class="paragraph code-paragraph collapsed" data-id="3uPbdhYe" name="session-data"><pre data-type="content" type="text/javascript" id="session-data">const dt = [
     {
         "from": "2018-09-26T13:57:38.861Z",
         "to": "2018-09-26T14:29:01.537Z",
@@ -4731,13 +4736,15 @@ exports = Object.assign(exports, {cmc})
         "className": "entry--point--default"
     }
 ]
-exports = Object.assign(exports, {dt})</pre></div><div class="paragraph code-paragraph" data-id="r7SPFVAa" name="timeline-component" last-execution-state="success"><pre data-type="content" type="text/javascript" id="timeline-component">// SOLVED: import timeline in a different file
+exports = Object.assign(exports, {dt})</pre></div><div class="paragraph code-paragraph collapsed" data-id="r7SPFVAa" name="timeline-component" last-execution-state="success"><pre data-type="content" type="text/javascript" id="timeline-component">// SOLVED: import timeline in a different file
 // SOLVED: mixing for fetched data
 // SOLVED: make a simple interface for selections
 // SOLVED: make watchers for selections
 //// SOLVED: fetch htmls on update
 //// INFO: don't need them, v-model brings this functionality
 
+// exports.defineTimelineComponent = () =&gt; {
+// }
 
 importLib([
   "Vs.min.js",
@@ -4933,17 +4940,19 @@ importLib([
 
       this.dt = sessionData
       
-     var input = this.selected
-		var current = input !== "undefined" ? input : this.selected
-		var fetched = fetch(window.serverAddress + current + "/?ops")
-  .then((html) =&gt; {
-    return html.json()
-  })
-  .then((body) =&gt; {
-    console.log('Fetched:\n', current)
-    this.versioningRaw = body
-    return body
-  })
+      var input = this.selected
+		  var current = input !== "undefined" ? input : this.selected
+		
+      
+// var fetched = fetch(window.serverAddress + current + "/?ops")
+//     .then((html) =&gt; {
+//         return html.json()
+//     })
+//     .then((body) =&gt; {
+//         console.log('Fetched:\n', current)
+//         this.versioningRaw = body
+//         return body
+//     })
 
 
 
@@ -4951,13 +4960,12 @@ importLib([
 
   });
 
-  // console.log("TimelineComponent", TimelineComponent)
   exports = Object.assign(exports, {
     TimelineComponent
   })
 
 })
-</pre></div><div class="paragraph code-paragraph" data-id="724e9cMS" name="server-utils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="server-utils">const getServer = () =&gt; {
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="724e9cMS" name="server-utils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="server-utils">const getServer = () =&gt; {
 
     var serverAddress;
 
@@ -4970,7 +4978,7 @@ importLib([
 
 const serverAddress = getServer()
 
-exports = Object.assign(exports, {serverAddress})</pre></div><div class="paragraph code-paragraph" data-id="ymYJBzbt" last-execution-state="success"><pre data-type="content" type="text/javascript">const serverUtils = require("#server-utils")
+exports = Object.assign(exports, {serverAddress})</pre></div><div class="paragraph code-paragraph collapsed" data-id="ymYJBzbt" last-execution-state="success"><pre data-type="content" type="text/javascript">const serverUtils = require("#server-utils")
 var input = "dull-warthog-73"
 var current = input !== "undefined" ? input : this.selected
 
@@ -4983,8 +4991,7 @@ var fetched = fetch(serverUtils.serverAddress + current + "/?ops")
              this.versioningRaw = body
              return body
   })
-console.log(fetched)</pre></div><div class="paragraph code-paragraph collapsed" data-id="bK4yQYtc" name="dom-tree-d3-component"><pre data-type="content" type="text/javascript">
-const diffVueComponent = require("#diff-vue-component")
+console.log(fetched)</pre></div><div class="paragraph code-paragraph collapsed" data-id="bK4yQYtc" name="dom-tree-d3-component"><pre data-type="content" type="text/javascript">const diffVueComponent = require("#diff-vue-component")
 const vueSlider = require("#vue-slider")
 
 // Mixins:
@@ -5360,4 +5367,227 @@ const DomTreeD3Component = Vue.component('dom-tree-d3', {
         }
     })
 
-})</pre></div><div class="paragraph body-paragraph" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"><div unapproved=""><div unapproved="" class="d3-metric" id="tmp" style="width: 100%; height: 600px;"><svg unapproved="" width="960" height="600"><g unapproved="" transform="translate(0, 0)"><text unapproved="" text-anchor="middle" x="480" y="0" dy="0.32em" fill="#000" fill-opacity="0.5" font-size="12" font-weight="400"></text></g><g unapproved="" transform="translate(0, 0)"><text unapproved="" text-anchor="middle" x="480" y="300" dy="0.32em" fill="#000000" fill-opacity="0.5" font-size="120" font-weight="900">45,000</text></g></svg></div></div></div></div></div>
+})</pre></div><div class="paragraph body-paragraph" data-id="vpBM6jTH" name="vue-timeline"><div data-type="content" type="text/html" contenteditable="true" id="vue-timeline" class="d"></div></div><div class="paragraph body-paragraph collapsed" data-id="u4cEdNvd" name="vue-body"><div data-type="content" type="text/html" contenteditable="true" id="vue-body"><div unapproved=""><div unapproved="" class="d3-metric" id="tmp" style="width: 100%; height: 600px;"><svg unapproved="" width="960" height="600"><g unapproved="" transform="translate(0, 0)"><text unapproved="" text-anchor="middle" x="480" y="0" dy="0.32em" fill="#000" fill-opacity="0.5" font-size="12" font-weight="400"></text></g><g unapproved="" transform="translate(0, 0)"><text unapproved="" text-anchor="middle" x="480" y="300" dy="0.32em" fill="#000000" fill-opacity="0.5" font-size="120" font-weight="900">45,000</text></g></svg></div></div></div></div><div class="paragraph code-paragraph" data-id="BQfZ4uWW" name="sidebar-vis"><pre data-type="content" type="text/javascript" id="sidebar-vis">// TODO: transient elements
+
+const drawTimeline = require("#timeline-component-full");
+const containerName = "sidebarVisContainer";
+
+exports.getView = (id) =&gt; {
+    
+    // get container
+    // get paragraph
+    let container = document.getElementById(containerName);
+    var comp = document.getElementsByName(id)[0].querySelector("transient[id='vue-container']")
+    // var comp = dc.querySelector("div[data-type]")
+    
+    let w = 400;
+    let h = 200;
+    let div = document.createElement("div");
+    div.classList.add("viewContainer");
+
+    // if diff component is already attached to
+    // sidebar, delete it
+    container.querySelector("transient[id='vue-container']") &amp;&amp;
+        container.querySelector("transient[id='vue-container']").remove()
+    
+    if (comp) {
+        
+        div.style.width = "400px";
+        div.style.height = "200px";
+        
+        let ratio = comp.offsetWidth / comp.offsetHeight;
+        
+        if (ratio &gt; 0.5) {
+            
+            div.classList.add("height-preferred");
+            
+        }
+        
+        container.appendChild(comp)
+        
+        return {w: w, h: h, content: div, view: comp};
+        
+    } else {
+        
+        let div = document.createElement("div");
+        div.style.width = 180 + "px";
+        div.style.height = h + "px";
+        div.innerHTML = "No view";
+        
+        return {w: 180, h: 50, content: div};
+        
+    }
+};
+
+
+
+exports.showPipeline = () =&gt; {
+  
+  let container = document.getElementById(containerName);
+  
+  // console.log(container)
+  
+  if (!container) {
+    
+    container = document.createElement("transient");
+    container.setAttribute("id", containerName);
+    document.body.appendChild(container);
+  }
+  
+  
+  document.body.setAttribute("transient-sidebar", true);
+  
+};
+
+exports.hidePipeline = () =&gt; {
+  
+  let container = document.getElementById(containerName); 
+  document.body.setAttribute("transient-sidebar", false);
+  
+};
+
+
+
+exports.timelineMode = (paragraph) =&gt; {
+  
+  var state = paragraph.getElementsByClassName("toggle-timeline")[0]
+  
+  if (!state.classList.contains("timeline-active")) {
+      
+      // TODO: fixme get paragraph ID
+    	// updates ui
+   		 
+    	state.classList.add("timeline-active")
+    
+      drawTimeline.drawTimeline(paragraph)  
+      exports.showPipeline()
+      exports.getView("vue-timeline")
+      
+      } else {
+        
+        	state.classList.remove("timeline-active")
+          exports.hidePipeline()
+  	      
+      }
+  
+}
+</pre></div><div class="paragraph code-paragraph" data-id="Vrm77ZZR" name="vis-components-ui" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="vis-components-ui">// const drawTimeline = require("#timeline-component-full");
+const sidebarVis = require("#sidebar-vis")
+
+
+importLib([
+    "hammer.min.js",
+    "hammer-time.min.js"
+]).then(() =&gt; {
+
+  const ParagraphUtils = require("#paragraph-utils");
+
+  let addTimelineButton = (paragraph) =&gt; {
+
+	let header = ParagraphUtils.getHeaderElement(paragraph);
+
+	// Make sure to add action only once, e.g. triggered multiple times on paragraph drag and drop
+	if (header.querySelector(".toggle-timeline")) {
+	    return;
+	}
+
+	let toggleTimeline = document.createElement("div");
+	toggleTimeline.classList.add("action");
+	toggleTimeline.classList.add("toggle-timeline");
+	toggleTimeline.setAttribute("tooltip", "true");
+	
+	let iconTimeline = document.createElement("i");
+	iconTimeline.classList.add("material-icons");
+	toggleTimeline.appendChild(iconTimeline);
+	header.appendChild(toggleTimeline);
+
+ 
+     try {
+       
+        [{action: toggleTimeline, desc: "toggleTimeline"}].forEach(action =&gt; {
+
+             
+       var mc = new Hammer.Manager(action.action);
+             
+	     mc.add(new Hammer.Tap({
+	         event: "tap",
+	         taps: 1
+	     }));
+
+	     mc.add(new Hammer.Press({
+	         event: "longpress",
+	         time: 250
+	     }));
+             
+             mc.on("tap", () =&gt; {
+          	     sidebarVis.timelineMode(paragraph);                 
+	         });
+               
+         })
+       
+     } catch {
+       console.log("Error!");
+     }
+    };
+
+    document.liveQuerySelectorAll(".paragraph").added(paragraph =&gt; {
+
+        // only code paragraphs
+        if (!paragraph.querySelector("pre[data-type='content']")) return;
+
+        const header = ParagraphUtils.getHeaderElement(paragraph);
+        const content = ParagraphUtils.getContentElement(paragraph);
+
+        addTimelineButton(paragraph)
+    });
+
+
+});
+</pre></div><div class="paragraph style-paragraph" data-id="hm5aAGhD" name="vis-components-ui-style"><style data-type="content" type="text/css" id="vis-components-ui-style">html .paragraph .toggle-timeline {
+    margin-left: 5px;
+    margin-right: 10px;
+}
+
+html .paragraph .toggle-timeline i:after {
+	content: "insert_chart_outlined";
+}
+
+.timeline-active i:after {
+	color: blue;
+}</style></div><div class="paragraph style-paragraph" data-id="De7wCmNv" name="vis-components-sidebar-style"><style data-type="content" type="text/css" id="vis-components-sidebar-style">body[transient-sidebar] #sidebarVisContainer {
+	position: fixed;
+	right: 0%;
+	top: 0%;
+  width: 27%;
+  height: 100%;
+  z-index: 1300;
+	background-color: var(--color-primary-shade-2);
+  transform: translate3d(100%, 0, 0);
+  box-shadow: none;
+  transition: transform var(--navigation-transition), box-shadow var(--navigation-transition);
+}
+
+body[transient-sidebar="true"] #sidebarVisContainer {
+  transform: translate3d(0, 0, 0);
+  box-shadow: 0 0 10px gray;
+}
+
+body[transient-sidebar="true"] #sidebarVisContainer > .visview > svg {
+	width: 100% !important;
+	height: 100% !important;
+}
+
+svg foreignObject > .viewContainer {
+	display: flex;
+/* 	position: static; */
+/* 	overflow: auto; */
+	overflow: hidden;
+}
+
+svg foreignObject > .viewContainer .visview {
+/* 	overflow: scroll; */
+/* 	display: flex; */
+/* 	width: 100%; */
+/* 	height: 100%; */
+}
+</style></div></div>
