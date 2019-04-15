@@ -1,10 +1,11 @@
-<div class="section section-visible" data-id="uhAEHyhb" data-type="package" name="Diff Patch Component" transient-focussed="true"><div class="paragraph body-paragraph" name="Documentation" data-id="BHwGfKAW"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
+<div class="section" data-id="uhAEHyhb" data-type="package" name="Diff Patch Component"><div class="paragraph body-paragraph" name="Documentation" data-id="BHwGfKAW"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
 <div>Your description...</div></div></div><div class="paragraph data-paragraph" name="Properties" data-id="NHLvqkv9"><pre data-type="content" type="application/json" class="section-properties">{
-  "version": "1.0",
-  "icon": "your_material_icon_string",
-  "description": "Your short description.",
+  "version": "0.2.0",
+  "icon": "inbox",
+  "description": "provides version control patches for code cells",
   "tags": [
-    "Your tags"
+    "pathing",
+    "version control"
   ],
   "assets": [
     "diff.min.js",
@@ -12,13 +13,246 @@
     "diff2html.min.css"
   ],
   "changelog": {
-    "1.0": "Initial version."
+    "0.2.0": "added simple interface for a code cell.",
+    "0.1.5": "added sidebar ala in a Vistrate.",
+    "0.1"  : "Initial version."
   },
   "github": {
     "url"   : "https://github.com/Stalkcomrade/codestrates-cell-versioning-package",
 		"folder": "packages/uhAEHyhb-diff-patch-component"
   }
-}</pre></div><div class="paragraph code-paragraph" data-id="6GZnnADH" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
+}</pre></div><div class="paragraph code-paragraph" data-id="eJGyMEpa" name="path-beautify"><pre data-type="content" type="text/javascript" id="path-beautify">exports.patchBeautify = (paragraphId, chunkName, initial, latest) =&gt; {
+
+importLib([
+    "diff2html.min.js",
+    "diff.min.js"
+]).then(() =&gt; {
+  
+
+var preDiffLocal = [initial, latest];
+var ndDiff = Diff.createPatch(chunkName, preDiffLocal[0], preDiffLocal[1])
+  
+var diffHtml = Diff2Html.getPrettyHtml(
+                        ndDiff, {
+                        inputFormat: 'diff',
+                        showFiles: false,
+                        matching: 'lines',
+                        outputFormat: 'side-by-side'
+                }
+         )
+
+// debugger
+// currently, this should work only for one code paragraph
+var paragraphId = "patch-display"
+
+
+if (document.getElementsByName(paragraphId)[0].querySelector("#diff-container")) {
+  
+  document.getElementsByName(paragraphId)[0].querySelector("#diff-container").remove()
+  
+}
+  
+
+const transientContainer = document.createElement("transient")
+transientContainer.setAttribute("id", "diff-container")  
+transientContainer.insertAdjacentHTML('beforeend', diffHtml)
+
+document.getElementsByName(paragraphId)[0].querySelector("[data-type='content']").appendChild(transientContainer)
+
+ 
+
+  
+  })
+  
+}
+</pre></div><div class="paragraph code-paragraph" data-id="sEgKnQn5" name="sidebar-diff"><pre data-type="content" type="text/javascript" id="sidebar-diff">// TODO: transient elements
+
+const patch = require("#path-beautify")
+
+// get output
+
+exports.getView = (id) =&gt; {
+    
+    // get container
+    // get paragraph
+    let container = document.getElementById("sidebarDiffContainer");
+    var comp = document.getElementsByName(id)[0].querySelector("transient[id='diff-container']")
+    // var comp = dc.querySelector("div[data-type]")
+    
+    let w = 400;
+    let h = 200;
+    let div = document.createElement("div");
+    div.classList.add("viewContainer");
+
+    // if diff component is already attached to
+    // sidebar, delete it
+    container.querySelector("transient[id='diff-container']") &amp;&amp;
+        container.querySelector("transient[id='diff-container']").remove()
+    
+    if (comp) {
+        
+        div.style.width = "400px";
+        div.style.height = "200px";
+        
+        let ratio = comp.offsetWidth / comp.offsetHeight;
+        
+        if (ratio &gt; 0.5) {
+            
+            div.classList.add("height-preferred");
+            
+        }
+        
+        container.appendChild(comp)
+        
+        return {w: w, h: h, content: div, view: comp};
+        
+    } else {
+        
+        let div = document.createElement("div");
+        div.style.width = 180 + "px";
+        div.style.height = h + "px";
+        div.innerHTML = "No view";
+        
+        return {w: 180, h: 50, content: div};
+        
+    }
+};
+
+
+
+exports.showPipeline = () =&gt; {
+  
+  let container = document.getElementById("sidebarDiffContainer");
+  
+  // console.log(container)
+  
+  if (!container) {
+    
+    container = document.createElement("transient");
+    container.setAttribute("id", "sidebarDiffContainer");
+    document.body.appendChild(container);
+  }
+  
+  
+  document.body.setAttribute("transient-sidebar", true);
+  
+};
+
+exports.hidePipeline = () =&gt; {
+  
+  let container = document.getElementById("sidebarDiffContainer"); 
+  document.body.setAttribute("transient-sidebar", false);
+  
+};
+
+
+
+exports.diffMode = (paragraph) =&gt; {
+  
+  var state = paragraph.getElementsByClassName("toggle-diff")[0]
+  
+  if (!state.classList.contains("diff-active")) {
+      
+      // TODO: fixme get paragraph ID
+    
+      patch.patchBeautify(paragraph, "test", "1111", "2222")
+      state.classList.add("diff-active")
+      exports.showPipeline()
+      exports.getView("patch-display")
+      
+      
+      } else {
+        
+          state.classList.remove("diff-active")
+          exports.hidePipeline()
+  	      
+      }
+  
+}
+</pre></div><div class="paragraph code-paragraph" data-id="8ZDQnYba" name="diff-ui" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="diff-ui">const diffUtils = require("#sidebar-diff");
+
+importLib([
+    "hammer.min.js",
+    "hammer-time.min.js"
+]).then(() =&gt; {
+
+    const ParagraphUtils = require("#paragraph-utils");
+
+  let addDiffButton = (paragraph) =&gt; {
+
+	let header = ParagraphUtils.getHeaderElement(paragraph);
+
+	// Make sure to add action only once, e.g. triggered multiple times on paragraph drag and drop
+	if (header.querySelector(".toggle-diff")) {
+	    return;
+	}
+
+	let toggleDiff = document.createElement("div");
+	toggleDiff.classList.add("action");
+	toggleDiff.classList.add("toggle-diff");
+	toggleDiff.setAttribute("tooltip", "true");
+	
+	let iconDiff = document.createElement("i");
+	iconDiff.classList.add("material-icons");
+	toggleDiff.appendChild(iconDiff);
+	header.appendChild(toggleDiff);
+
+ 
+     try {
+       
+        [{action: toggleDiff, desc: "toggleDiff"}].forEach(action =&gt; {
+
+             
+       var mc = new Hammer.Manager(action.action);
+             
+	     mc.add(new Hammer.Tap({
+	         event: "tap",
+	         taps: 1
+	     }));
+
+	     mc.add(new Hammer.Press({
+	         event: "longpress",
+	         time: 250
+	     }));
+             
+             mc.on("tap", () =&gt; {
+          	     diffUtils.diffMode(paragraph);                 
+	         });
+               
+         })
+       
+     } catch {
+       console.log("Error!");
+     }
+    };
+
+    document.liveQuerySelectorAll(".paragraph").added(paragraph =&gt; {
+
+        // only code paragraphs
+        if (!paragraph.querySelector("pre[data-type='content']")) return;
+
+        const header = ParagraphUtils.getHeaderElement(paragraph);
+        const content = ParagraphUtils.getContentElement(paragraph);
+
+        addDiffButton(paragraph)
+    });
+
+
+});
+</pre></div><div class="paragraph style-paragraph" data-id="BNfusWfe" name="diff-ui-style"><style data-type="content" type="text/css" id="diff-ui-style">html .paragraph .toggle-diff {
+    margin-left: 5px;
+    margin-right: 10px;
+}
+
+html .paragraph .toggle-diff i:after {
+	content: "inbox";
+}
+
+.diff-active i:after {
+	color: blue;
+}</style></div><div class="paragraph code-paragraph collapsed" data-id="6GZnnADH" last-execution-state="success" name="patch-apply"><pre data-type="content" type="text/javascript" id="patch-apply">exports.createPatch = (paragraphId) =&gt; {
+  
+  importLib([
     "diff.min.js"
 ]).then(() =&gt; {
   
@@ -28,7 +262,7 @@ var one = 'beep boop',
     span = null;
 
 var diff = Diff.diffChars(one, other),
-    display = document.getElementById('display'),
+    display = document.getElementById(paragraphId),
     fragment = document.createDocumentFragment();
 
 diff.forEach(function(part){
@@ -45,34 +279,46 @@ diff.forEach(function(part){
 
 display.appendChild(fragment);
   
-})</pre></div><div class="paragraph code-paragraph" data-id="2fHE5FPz" last-execution-state="success"><pre data-type="content" type="text/javascript">importLib([
-    "diff2html.min.js",
-    "diff.min.js"
-]).then(() =&gt; {
+})
   
+}
+</pre></div><div class="paragraph body-paragraph" data-id="Tnba8rNX" name="patch-display"><div data-type="content" type="text/html" contenteditable="true" id="patch-display"></div></div><div class="paragraph style-paragraph collapsed" data-id="BHQnnywh" name="sidebar-diff-style"><style data-type="content" type="text/css" id="sidebar-diff-style">body[transient-sidebar] #sidebarDiffContainer {
+	position: fixed;
+	right: 0%;
+	top: 0%;
+  width: 27%;
+  height: 100%;
+  z-index: 1300;
+	background-color: var(--color-primary-shade-2);
+  transform: translate3d(100%, 0, 0);
+  box-shadow: none;
+  transition: transform var(--navigation-transition), box-shadow var(--navigation-transition);
+}
 
-var preDiffLocal = ["test 11111", "test1"];
-  
-  
-var ndDiff = Diff.createPatch("test", preDiffLocal[0], preDiffLocal[1])
-console.log(Diff)
+body[transient-sidebar="true"] #sidebarDiffContainer {
+  transform: translate3d(0, 0, 0);
+  box-shadow: 0 0 10px gray;
+}
 
-  
-var diffHtml = Diff2Html.getPrettyHtml(
-                        ndDiff, {
-                        inputFormat: 'diff',
-                        showFiles: false,
-                        matching: 'lines',
-                        outputFormat: 'side-by-side'
-                }
-         )
+body[transient-sidebar="true"] #sidebarDiffContainer > .visview > svg {
+	width: 100% !important;
+	height: 100% !important;
+}
 
+svg foreignObject > .viewContainer {
+	display: flex;
+/* 	position: static; */
+/* 	overflow: auto; */
+	overflow: hidden;
+}
 
-document.getElementById("display").insertAdjacentHTML('beforeend', diffHtml);
-
-  
-  })
-           </pre></div><div class="paragraph style-paragraph" data-id="tcPbcPhE"><style data-type="content" type="text/css">.d2h-wrapper {
+svg foreignObject > .viewContainer .visview {
+/* 	overflow: scroll; */
+/* 	display: flex; */
+/* 	width: 100%; */
+/* 	height: 100%; */
+}
+</style></div><div class="paragraph style-paragraph collapsed" data-id="tcPbcPhE" name="diff2html"><style data-type="content" type="text/css" id="diff2html">.d2h-wrapper {
 	text-align: left
 }
 
@@ -411,124 +657,4 @@ document.getElementById("display").insertAdjacentHTML('beforeend', diffHtml);
 .selecting-right td.d2h-code-side-linenumber ::selection,
 .selecting-right td.d2h-code-side-linenumber::selection {
 	background: 0 0
-}</style></div><div class="paragraph body-paragraph" data-id="d2BpvQcn" name="display"><div data-type="content" type="text/html" contenteditable="true" id="display"><div class="d2h-wrapper">
-    <div id="d2h-556498" class="d2h-file-wrapper" data-lang="">
-    <div class="d2h-file-header">
-      <span class="d2h-file-name-wrapper">
-    <svg aria-hidden="true" class="d2h-icon" height="16" version="1.1" viewBox="0 0 12 16" width="12">
-        <path d="M6 5H2v-1h4v1zM2 8h7v-1H2v1z m0 2h7v-1H2v1z m0 2h7v-1H2v1z m10-7.5v9.5c0 0.55-0.45 1-1 1H1c-0.55 0-1-0.45-1-1V2c0-0.55 0.45-1 1-1h7.5l3.5 3.5z m-1 0.5L8 2H1v12h10V5z"></path>
-    </svg>    <span class="d2h-file-name">test</span>
-    <span class="d2h-tag d2h-changed d2h-changed-tag">CHANGED</span></span>
-    </div>
-    <div class="d2h-files-diff">
-        <div class="d2h-file-side-diff">
-            <div class="d2h-code-wrapper">
-                <table class="d2h-diff-table">
-                    <tbody class="d2h-diff-tbody">
-                    <tr>
-    <td class="d2h-code-side-linenumber d2h-info"></td>
-    <td class="d2h-info">
-        <div class="d2h-code-side-line d2h-info">@@ -1,1 +1,1 @@</div>
-    </td>
-</tr><tr>
-    <td class="d2h-code-side-linenumber d2h-del d2h-change">
-      1
-    </td>
-    <td class="d2h-del d2h-change">
-        <div class="d2h-code-side-line d2h-del d2h-change">
-            <span class="d2h-code-line-prefix">-</span>
-            <span class="d2h-code-line-ctn"><del>test 11111</del></span>
-        </div>
-    </td>
-</tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="d2h-file-side-diff">
-            <div class="d2h-code-wrapper">
-                <table class="d2h-diff-table">
-                    <tbody class="d2h-diff-tbody">
-                    <tr>
-    <td class="d2h-code-side-linenumber d2h-info"></td>
-    <td class="d2h-info">
-        <div class="d2h-code-side-line d2h-info"></div>
-    </td>
-</tr><tr>
-    <td class="d2h-code-side-linenumber d2h-ins d2h-change">
-      1
-    </td>
-    <td class="d2h-ins d2h-change">
-        <div class="d2h-code-side-line d2h-ins d2h-change">
-            <span class="d2h-code-line-prefix">+</span>
-            <span class="d2h-code-line-ctn"><ins>test1</ins></span>
-        </div>
-    </td>
-</tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-</div><div class="d2h-wrapper">
-    <div id="d2h-556498" class="d2h-file-wrapper" data-lang="">
-    <div class="d2h-file-header">
-      <span class="d2h-file-name-wrapper">
-    <svg aria-hidden="true" class="d2h-icon" height="16" version="1.1" viewBox="0 0 12 16" width="12">
-        <path d="M6 5H2v-1h4v1zM2 8h7v-1H2v1z m0 2h7v-1H2v1z m0 2h7v-1H2v1z m10-7.5v9.5c0 0.55-0.45 1-1 1H1c-0.55 0-1-0.45-1-1V2c0-0.55 0.45-1 1-1h7.5l3.5 3.5z m-1 0.5L8 2H1v12h10V5z"></path>
-    </svg>    <span class="d2h-file-name">test</span>
-    <span class="d2h-tag d2h-changed d2h-changed-tag">CHANGED</span></span>
-    </div>
-    <div class="d2h-files-diff">
-        <div class="d2h-file-side-diff">
-            <div class="d2h-code-wrapper">
-                <table class="d2h-diff-table">
-                    <tbody class="d2h-diff-tbody">
-                    <tr>
-    <td class="d2h-code-side-linenumber d2h-info"></td>
-    <td class="d2h-info">
-        <div class="d2h-code-side-line d2h-info">@@ -1,1 +1,1 @@</div>
-    </td>
-</tr><tr>
-    <td class="d2h-code-side-linenumber d2h-del d2h-change">
-      1
-    </td>
-    <td class="d2h-del d2h-change">
-        <div class="d2h-code-side-line d2h-del d2h-change">
-            <span class="d2h-code-line-prefix">-</span>
-            <span class="d2h-code-line-ctn"><del>test 11111</del></span>
-        </div>
-    </td>
-</tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <div class="d2h-file-side-diff">
-            <div class="d2h-code-wrapper">
-                <table class="d2h-diff-table">
-                    <tbody class="d2h-diff-tbody">
-                    <tr>
-    <td class="d2h-code-side-linenumber d2h-info"></td>
-    <td class="d2h-info">
-        <div class="d2h-code-side-line d2h-info"></div>
-    </td>
-</tr><tr>
-    <td class="d2h-code-side-linenumber d2h-ins d2h-change">
-      1
-    </td>
-    <td class="d2h-ins d2h-change">
-        <div class="d2h-code-side-line d2h-ins d2h-change">
-            <span class="d2h-code-line-prefix">+</span>
-            <span class="d2h-code-line-ctn"><ins>test1</ins></span>
-        </div>
-    </td>
-</tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-</div></div></div></div>
+}</style></div></div>
