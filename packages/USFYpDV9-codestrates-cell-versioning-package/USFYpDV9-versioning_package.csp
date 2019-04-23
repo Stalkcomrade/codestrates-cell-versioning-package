@@ -2396,9 +2396,6 @@ const sortNclear = async (ind) =&gt; {
 
 
 
-
-
-
 // FIXME:
 // used to find a proper ops quantity before navigation on contributors or state execution
 // opsLocal - ops for the current code cell
@@ -2455,7 +2452,7 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 
     if (navigationalMode == "backward") {
 
-        navigateTo = statesList.filter(state =&gt; (state.state == "error") &amp;&amp;
+        navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
                                        ((state.globalIndex - vm.context.globalIndex) &lt; 0))
 
         // if possible, then reduce
@@ -2467,7 +2464,7 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
         
     } else if (navigationalMode == "forward") {
 
-        navigateTo = statesList.filter(state =&gt; (state.state == "error") &amp;&amp;
+        navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
                                        ((state.globalIndex - vm.context.globalIndex) &gt; 0))
         navigateTo = navigateTo.length &gt; 1
             ? navigateTo.reduce((prev, curr) =&gt;  {
@@ -2487,38 +2484,39 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
     // this is the op I need to navigateTo
     var closestOp;
 
-    if (artefactMode == "error") {
+    // if (artefactMode == "error") {
 
-        // just realised, that some and every are the same as while and repeat
-        // I need the first, which satisfies the condition
-        // I am findig the closest state change
-        // and looking for the closest index of the version for the corresponding code cell
+    // just realised, that some and every are the same as while and repeat
+    // I need the first, which satisfies the condition
+    // I am findig the closest state change
+    // and looking for the closest index of the version for the corresponding code cell
 
-        if (navigationalMode == "backward") {
+    if (navigationalMode == "backward") {
 
-            closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &lt; 0)
+        closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &lt; 0)
 
-            // if there is something to reduce, do it
-            closestOp = closestOp.length &gt; 1
-                ? closestOp.reduce((prev, curr) =&gt;  {
-                    return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
-                })
-                : closestOp
-            
-        } else if (navigationalMode == "forward") {
+        // if there is something to reduce, do it
+        closestOp = closestOp.length &gt; 1
+            ? closestOp.reduce((prev, curr) =&gt;  {
+                return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
+            })
+            : closestOp
+        
+    } else if (navigationalMode == "forward") {
 
-            
-            closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &gt;= 0)
-            
-            closestOp = closestOp.length &gt; 1 
-                ? closestOp.reduce((prev, curr) =&gt;  {
-                    return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
-                })
-                : closestOp
-            
-        }
-
+        
+        closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &gt;= 0)
+        
+        closestOp = closestOp.length &gt; 1 
+            ? closestOp.reduce((prev, curr) =&gt;  {
+                return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
+            })
+            : closestOp
+        
     }
+
+    // } else if (artefactMode == "success") {
+    // }
 
 
     // TODO: calculate number of operations given the opsLocal to get to the closestOp
@@ -2546,6 +2544,7 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
     return opsQuantity
     
 }
+
 
 // TODO: 
 // there are ops wiht the same version number
@@ -2783,133 +2782,178 @@ opsLocal.filter(el =&gt; el.opMeta.userId == contributors[0])
 // apply several (how to define the proper scope) operational transformation
 // number of ops to apply sequentilly 
 // backward or forward
-const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, 
-                                          operationalMode, opsQuantity) =&gt; {
-  
-  var rootTmp = document.querySelector("pre[versioning-id-to-remove='" +
-                                             paragraph.getAttribute("name") + "']" )
-  
-  
-  console.log("Applying Op to this element", rootTmp)
-  
-  
-  var opInst = await ops;
-  var opTry;
-  var unIndex;
- 
-  
+const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operationalMode, opsQuantity) =&gt; {
     
-  if (operationalMode == "forward" &amp;&amp; // checking whether it is possible to go forward
-                opInst.opsOb[vm.context.currentIndex] != undefined) {
-      
+    var rootTmp = document.querySelector("pre[versioning-id-to-remove='" +
+                                         paragraph.getAttribute("name") + "']" )
     
-    console.log("vm.context.currentIndex", vm.context.currentIndex) 
-    console.log("Op version", stateSelection.version)
-    console.log("Forward Checking")
-    console.log("unIndex", unIndex)
     
-   
-  } else if (operationalMode == "backward" &amp;&amp; // checking whether it is possible to go backward
-                opInst.opsOb[vm.context.currentIndex] != undefined) {
+    console.log("Applying Op to this element", rootTmp)
+    
+    
+    var opInst = await ops,
+        opTry;
+    // var unIndex;
+    
+    
+    if (operationalMode == "forward" &amp;&amp; // checking whether it is possible to go forward
+        opInst.opsOb[vm.context.currentIndex] != undefined) {
+        
+        
+        console.log("vm.context.currentIndex", vm.context.currentIndex) 
+        console.log("Op version", stateSelection.version)
+        console.log("Forward Checking")
+        // console.log("unIndex", unIndex)
+        
+        
+    } else if (operationalMode == "backward" &amp;&amp; // checking whether it is possible to go backward
+               opInst.opsOb[vm.context.currentIndex] != undefined) {
+
+        
+        console.log("vm.context.currentIndex", vm.context.currentIndex)
+        console.log("Op version", stateSelection.version)
+        console.log("Backward Checking")
+        // console.log("unIndex", unIndex)
+        
+    } else {
+        
+        console.log("Specify operationalMode")
+        // unIndex = false
+        
+    }
+
+
+    // FIXME: convention - index of applied operation is cached
+
+    // FIXME: first, check whether it is possible to apply this
+    // number of operation per chunk
+    // if not, apply as maximum as possible
+
 
     
-    console.log("vm.context.currentIndex", vm.context.currentIndex)
-    console.log("Op version", stateSelection.version)
-    console.log("Backward Checking")
-    console.log("unIndex", unIndex)
+    // FIXME: &lt; or &lt;=    
+    // FIXME: including/excluding current op
+
+    // FIXME: should additionaly check for the first operation in the beginning of the loop
     
-  } else {
+    // I am specifying direction in general case when ops is already applied
+    // if there is no information per index, it is applicable either way
+
+    // need to specify additional parameter for last index
+    // lastCommand
+
+    // meanwhile, when mode is entered, I should specify
+    // that forward is not possible
     
-    console.log("No next/previous version")
-    unIndex = false
     
-  }
-  
-  
-// unOp = opInst.opsOb[vm.context.currentIndex]  
-// vm.context.currentIndex = vm.context.currentIndex
-vm.context.lastAction = operationalMode
+    // unOp = opInst.opsOb[vm.context.currentIndex]  
+    // vm.context.currentIndex = vm.context.currentIndex
+    vm.context.lastAction = operationalMode
 
-var opsToReturn = [],
-    opTry,
-    tmpPath;
+    var opsToReturn = [],
+        opTry,
+        tmpPath;
 
-  return new Promise((resolve,reject) =&gt; {
+    return new Promise((resolve,reject) =&gt; {
 
-      if (operationalMode === "backward" &amp;&amp; unIndex != false) {
+        // if (operationalMode === "backward" &amp;&amp; unIndex != false) {
+        if (operationalMode === "backward") {
 
-          for (var i = opInst.opsOb.length - 1; i &gt; opInst.opsOb.length - opsQuantity - 1; i--) {
-              
-              opTry = Object.assign({}, opInst.opsOb[i].realOp)
+            // updating opsQuantity, if specified before amount cannot be applied
+            // apply all existing ops
+            opsQuantity = (vm.context.currentIndex - opsQuantity &gt; 0) // backward indexing
+                ? opsQuantity
+                : vm.context.currentIndex 
 
-              tmpPath = Object.assign([], opInst.opsOb[i].path)
-              opTry.p = tmpPath.splice(-2)
-              
-              // global index from the entire ops to identify proper
+
+            // FIXME: dangerous situation both i and vm.context.currentIndex are updated
+            // for (var i = opInst.opsOb.length - 1; i &gt; opInst.opsOb.length - opsQuantity - 1; i--) {
+            for (var i = vm.context.currentIndex; i &gt; vm.context.currentIndex - opsQuantity; i--) {
+                
+                opTry = Object.assign({}, opInst.opsOb[i].realOp)
+
+                tmpPath = Object.assign([], opInst.opsOb[i].path)
+                opTry.p = tmpPath.splice(-2)
+                
+                // global index from the entire ops to identify proper
             	// execution state for the code cell
-              vm.context.globalIndex = opInst.opsOb[i].globalIndex
-            
+                vm.context.globalIndex = opInst.opsOb[i].globalIndex
+                
             	console.log("Global Index", vm.context.globalIndex)
-              console.log("Applying this op:", opInst.opsOb[i].realOp)
-              console.log("Op Path", opTry.p)
-              
-              coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+                console.log("Applying this op:", opInst.opsOb[i].realOp)
+                console.log("Op Path", opTry.p)
+                
+                coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
 
-              opsToReturn.push(opInst.opsOb[i])
-              vm.context.currentIndex = vm.context.currentIndex - 1
-              
-          }
+                opsToReturn.push(opInst.opsOb[i])
+                // vm.context.currentIndex = vm.context.currentIndex - 1
+                
+            }
 
-          resolve(opsToReturn[opsToReturn.length - 1])
-    
-  } else if (operationalMode === "forward" &amp;&amp; unIndex != false) {
-
-          
-          for (var i = vm.context.currentIndex + 1; i &lt; vm.context.currentIndex + opsQuantity; i++) {
-              
-   	      
-              opTry = Object.assign({}, opInst.opsOb[i].realOp)
-
-              tmpPath = Object.assign([], opInst.opsOb[i].path)
-              opTry.p = tmpPath.splice(-2)
+            // FIXME: transfered update of currentIndex here
+            vm.context.currentIndex = vm.context.currentIndex - opsQuantity
+            resolve(opsToReturn[opsToReturn.length - 1])
             
-              // global index from the entire ops to identify proper
+            // } else if (operationalMode === "forward" &amp;&amp; unIndex != false) {
+        } else if (operationalMode === "forward") {
+
+            // if specified number of operation cannot be applied
+            // applied until the end of history per code cell
+            opsQuantity = (vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length) // forward indexing
+                ? opsQuantity
+                : opInst.opsOb.length - vm.context.currentIndex
+            
+            // for (var i = vm.context.currentIndex + 1; i &lt; vm.context.currentIndex + opsQuantity; i++) {
+            for (var i = vm.context.currentIndex; i &lt; vm.context.currentIndex + opsQuantity; i++) {
+   	        
+                opTry = Object.assign({}, opInst.opsOb[i].realOp)
+
+                tmpPath = Object.assign([], opInst.opsOb[i].path)
+                opTry.p = tmpPath.splice(-2)
+                
+                // global index from the entire ops to identify proper
             	// execution state for the code cell
-              vm.context.globalIndex = opInst.opsOb[i].globalIndex
-            
+                vm.context.globalIndex = opInst.opsOb[i].globalIndex
+                
             	console.log("Global Index", vm.context.globalIndex)
-              
-              console.log("Applying this op:", opInst.opsOb[i].realOp)
-              console.log("Op Path", opTry.p)
-              
-              coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
+                
+                console.log("Applying this op:", opInst.opsOb[i].realOp)
+                console.log("Op Path", opTry.p)
+                
+                coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
             	// debugger;
 
-              opsToReturn.push(opInst.opsOb[i])
-              
-              
-          }
+                opsToReturn.push(opInst.opsOb[i])
+                
+                
+            }
+            
+            vm.context.currentIndex = vm.context.currentIndex + opsQuantity
+            resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+            
+        } else if (typeof operationalMode === "undefined") {
+            
+            console.error("Specify operationalMode!")
+            reject()
+
+        }
+        
+        // } else if (unIndex == false) {
+        // console.error("There is no )
+        // reject()
+        
+        // }
+        
+        
+    })
     
-      vm.context.currentIndex = vm.context.currentIndex + opsQuantity
-      resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
     
-  } else if (typeof operationalMode === "undefined") {
-    
-    console.error("Specify operationalMode!")
-    reject()
-    
-  } else if (unIndex == false) {
-    
-    console.error("There is no next/previous version for code chunk: ", stateSelection)
-    reject()
-    
-  }
-    
-    
-  })
-  
-  
 }
+
+
+// FIXME: changeDirection for the multiple
+
+
 // looks for the corresponding opsObject for paragraph
 const getOpsFromCuex = (paragraph, cuex) =&gt; {
   
@@ -3113,7 +3157,7 @@ const toggleForwardContributor = async (paragraph, operationalMode = "forward") 
   
 }
 
-const toggleBackError = async (paragraph, operationalMode = "backward") =&gt; {
+const toggleBackError = async (paragraph, operationalMode = "backward", artefactMode = "error") =&gt; {
     
     console.log("Back Error")
     
@@ -3126,7 +3170,7 @@ const toggleBackError = async (paragraph, operationalMode = "backward") =&gt; {
     var meta = {}
 
     console.log("stateOps", vm.context.stateOps)
-    var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, "backward", "error")
+    var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
     
     console.log("opsQuantity", opsQuantity)
     
@@ -3141,13 +3185,13 @@ const toggleBackError = async (paragraph, operationalMode = "backward") =&gt; {
     
     
     await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, "backward");
+    await updateIndicators(paragraph, meta, operationalMode);
     
     
 }
 
 
-const toggleForwardError = async (paragraph, operationalMode = "forward") =&gt; {
+const toggleForwardError = async (paragraph, operationalMode = "forward", artefactMode = "error") =&gt; {
     
     console.log("Forward Error")
     
@@ -3162,7 +3206,7 @@ const toggleForwardError = async (paragraph, operationalMode = "forward") =&gt; 
 
     // TODO: 
     console.log("stateOps", vm.context.stateOps)
-    var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, "forward", "error")
+    var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
     
     console.log("opsQuantity", opsQuantity)
     
@@ -3175,7 +3219,7 @@ const toggleForwardError = async (paragraph, operationalMode = "forward") =&gt; 
     
 
     await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, "forward");
+    await updateIndicators(paragraph, meta, operationalMode);
     
     
 
@@ -3183,15 +3227,73 @@ const toggleForwardError = async (paragraph, operationalMode = "forward") =&gt; 
 }
 
 
+const toggleBackSuccess = async (paragraph, operationalMode = "backward", artefactMode = "success") =&gt; {
+  
+  console.log("Back Success")
+    
+    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
+    var stateSelection = await chooseOpBeforeApply(paragraph);
+    
+    console.log("localOpsState", localOpsState)
+    console.log("stateSelection", stateSelection)
+    
+    var meta = {}
 
+    console.log("stateOps", vm.context.stateOps)
+    var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
+    
+    console.log("opsQuantity", opsQuantity)
+    
+    // meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0], 
+    //                                                         stateSelection, operationalMode, opsQuantity)
 
-const toggleBackSuccess = (paragraph) =&gt; {
+    meta["ops"] = opsQuantity &gt; 0
+        ? await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0], 
+                                                    stateSelection, operationalMode, opsQuantity)
+        : await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
+                                            stateSelection, operationalMode)
+    
+    
+    await updateEditor(paragraph, meta["ops"]);
+    await updateIndicators(paragraph, meta, operationalMode);
+    
+    
 
 }
 
-const toggleForwardSuccess = (paragraph) =&gt; {
+const toggleForwardSuccess = async (paragraph, operationalMode = "forward", artefactMode = "success") =&gt; {
+  
+   console.log("Forward Success")
+    
+    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
+    var stateSelection = await chooseOpBeforeApply(paragraph);
+    
+    console.log("localOpsState", localOpsState)
+    console.log("stateSelection", stateSelection)
+    
+    var meta = {}
+
+
+    // TODO: 
+    console.log("stateOps", vm.context.stateOps)
+    var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
+    
+    console.log("opsQuantity", opsQuantity)
+    
+    meta["ops"] = opsQuantity &gt; 0
+        ? await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0], 
+                                                    stateSelection, operationalMode, opsQuantity)
+        : await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
+                                            stateSelection, operationalMode)
+
+    
+
+    await updateEditor(paragraph, meta["ops"]);
+    await updateIndicators(paragraph, meta, operationalMode);
 
 }
+
+
 
 
 // TODO: can't go back/forward notification
@@ -3237,7 +3339,11 @@ const toggleBackCardinal = async (paragraph, operationalMode = "backward") =&gt;
                                                     stateSelection, operationalMode, 5)
   
   
-	await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+  try {
+    await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+  } catch {
+    console.error("Cannot go Back")
+  }
     
 }
 
@@ -3280,7 +3386,12 @@ const toggleForwardCardinal = async (paragraph, operationalMode = "forward") =&g
                                                     stateSelection, operationalMode, 5)
   
   
-	await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+  try {
+    await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+  } catch {
+    console.error("Cannot go Forward")
+  }
+	
     
 };
 
