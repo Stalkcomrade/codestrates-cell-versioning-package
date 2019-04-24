@@ -1,5 +1,5 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.4.0.0",
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+	"version"    : "0.4.1.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,6 +12,7 @@
 	],
 	"changelog":
 	{
+    "0.4.1.0" : "contributor-based navigation",
     "0.4.0.0" : "WiP: navigation via artefacts",
     "0.3.9.5" : "finding ops related to execution state",
     "0.3.9.0" : "UI enter/exit and way to update editor are ready",
@@ -2395,85 +2396,27 @@ const sortNclear = async (ind) =&gt; {
 
 
 
-
 // FIXME:
 // used to find a proper ops quantity before navigation on contributors or state execution
 // opsLocal - ops for the current code cell
 // opsStatePromise - state-related ops for the current code cell 
 const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, navigationalMode, artefactMode) =&gt; {
-    
-    var opsQuantity,
-        ops = await opsStatePromise,
-        opsLcl = await opsLocal,
-        statesList = []; // mapping all state changes from undefined or success to error
 
+    var opsQuantity,
+        ops = await opsStatePromise, // either ops with the state changes or contributor-specific slice
+        opsLcl = await opsLocal,
+        statesList = [], // mapping all state changes from undefined or success to error
+        navigateTo, // next state to navigate to (execution artefact)
+        closestOp, // this is the op I need to navigateTo
+        finalClosestOp // last op to be applied in case of contributor-based navigation
+
+    // FIXME:
     // vm.context.currentIndex - index within local array of ops for a code cell
     // vm.context.globalIndex - index within the overall array of ops for the codestrate
-    
-
-    // FIXME: might be several closest indexes
-    // making a proper array of states
-    ops.forEach(el =&gt; {
-
-        if (el.realOp.od == "success" || el.realOp.od
-            &amp;&amp; el.realOp.oi == "error") {
-            
-            statesList.push({globalIndex : el.globalIndex,
-                             state       : "error",
-                             distance    : el.globalIndex - vm.context.globalIndex})
-            
-        } else { // FIXME: assuming, that all other states are successfull
-
-            statesList.push({globalIndex : el.globalIndex,
-                             state       : "success",
-                             distance    : el.globalIndex - vm.context.globalIndex})
-            
-            
-        }
-
-    })
-    
-
     // Using this for easing navigation through artefacts
     // global or local?
     // vm.context.errorIndex
     // vm.context.successIndex
-    // if (vm.context.errorIndex) {
-    // }
-    // if (vm.context.successIndex) {
-    // }
-    
-
-    // find the next state to navigate to considering current index
-    // SOLVED: I need to consider the right sorting for this to work
-    // filtering those state changes, which occured after/before current index
-    
-    var navigateTo;
-
-    if (navigationalMode == "backward") {
-
-        navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
-                                       ((state.globalIndex - vm.context.globalIndex) &lt; 0))
-
-        // if possible, then reduce
-        navigateTo = navigateTo.length &gt; 1
-            ? navigateTo.reduce((prev, curr) =&gt;  {
-                return prev.distance &lt; curr.distance ? prev : curr;
-            })
-            : navigateTo
-        
-    } else if (navigationalMode == "forward") {
-
-        navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
-                                       ((state.globalIndex - vm.context.globalIndex) &gt; 0))
-        navigateTo = navigateTo.length &gt; 1
-            ? navigateTo.reduce((prev, curr) =&gt;  {
-                return prev.distance &lt; curr.distance ? prev : curr;
-            })
-            : navigateTo
-    }
-    
-
     // TODO: consider local index for state
     // TODO: consider global current index
     // ??? within and between states of different type
@@ -2481,63 +2424,160 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
     // var localErrorIndex,
     //     localSuccessIndex;
 
-    // this is the op I need to navigateTo
-    var closestOp;
+    // I am already receiving filtered local ops object
 
-    // if (artefactMode == "error") {
+    if (artefactMode == "contributor") {
 
-    // just realised, that some and every are the same as while and repeat
-    // I need the first, which satisfies the condition
-    // I am findig the closest state change
-    // and looking for the closest index of the version for the corresponding code cell
+        // console.log(opsLcl)
 
-    if (navigationalMode == "backward") {
+        // FIXME: swap opsStatePromise to opsLocal
+        // opsStatePromise, opsLocal
+        
+        // FIXME: try abs
+        // calculate distance for all ops from current global index
+        closestOp = opsStatePromise.nextContributorOps.map(el =&gt; {
+            return {
+                globalIndex : el.globalIndex,
+                distance    : Math.abs(el.globalIndex - vm.context.globalIndex)
+            }
+        })
 
-        closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &lt; 0)
+        // FIXME: find distance
 
-        // if there is something to reduce, do it
-        closestOp = closestOp.length &gt; 1
+        // if possible, then reduce
+        // next op to be applied
+        closestOp = closestOp.length &gt; 1 &amp;&amp; closestOp.length
             ? closestOp.reduce((prev, curr) =&gt;  {
-                return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
+                return prev.distance &lt; curr.distance ? prev : curr;
             })
             : closestOp
-        
-    } else if (navigationalMode == "forward") {
+
+        finalClosestOp = opsStatePromise.nextContributorOps.filter(el =&gt; el.globalIndex == closestOp.globalIndex)
 
         
-        closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &gt;= 0)
+        if (navigationalMode == "backward") {
+            
+            finalClosestOp = Array.isArray(finalClosestOp) ? finalClosestOp : [finalClosestOp]
+            
+            opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
+                opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == finalClosestOp[0].globalIndex)
+
+        } else if (navigationalMode == "forward") {
+
+            finalClosestOp = Array.isArray(finalClosestOp) ? finalClosestOp : [finalClosestOp]
+
+            opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == finalClosestOp[0].globalIndex) - 
+                opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
+
+        }
+
         
-        closestOp = closestOp.length &gt; 1 
-            ? closestOp.reduce((prev, curr) =&gt;  {
-                return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
-            })
-            : closestOp
+    } else {
         
+
+        // FIXME: might be several closest indexes
+        // making a proper array of states
+        ops.forEach(el =&gt; {
+
+            if (el.realOp.od == "success" || el.realOp.od
+                &amp;&amp; el.realOp.oi == "error") {
+                
+                statesList.push({globalIndex : el.globalIndex,
+                                 state       : "error",
+                                 distance    : el.globalIndex - vm.context.globalIndex})
+                
+            } else { // FIXME: assuming, that all other states are successfull
+
+                statesList.push({globalIndex : el.globalIndex,
+                                 state       : "success",
+                                 distance    : el.globalIndex - vm.context.globalIndex})
+                
+                
+            }
+
+        })
+        
+
+
+        // find the next state to navigate to considering current index
+        // SOLVED: I need to consider the right sorting for this to work
+        // filtering those state changes, which occured after/before current index
+        
+
+        if (navigationalMode == "backward") {
+
+            navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
+                                           ((state.globalIndex - vm.context.globalIndex) &lt; 0))
+
+            // if possible, then reduce
+            navigateTo = navigateTo.length &gt; 1
+                ? navigateTo.reduce((prev, curr) =&gt;  {
+                    return prev.distance &lt; curr.distance ? prev : curr;
+                })
+                : navigateTo
+            
+        } else if (navigationalMode == "forward") {
+
+            navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
+                                           ((state.globalIndex - vm.context.globalIndex) &gt; 0))
+            navigateTo = navigateTo.length &gt; 1
+                ? navigateTo.reduce((prev, curr) =&gt;  {
+                    return prev.distance &lt; curr.distance ? prev : curr;
+                })
+                : navigateTo
+        }
+        
+
+        // just realised, that some and every are the same as while and repeat
+        // I need the first, which satisfies the condition
+        // I am findig the closest state change
+        // and looking for the closest index of the version for the corresponding code cell
+
+        if (navigationalMode == "backward") {
+
+            closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &lt; 0)
+
+            // if there is something to reduce, do it
+            closestOp = closestOp.length &gt; 1
+                ? closestOp.reduce((prev, curr) =&gt;  {
+                    return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
+                })
+                : closestOp
+            
+        } else if (navigationalMode == "forward") {
+
+            
+            closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &gt;= 0)
+            
+            closestOp = closestOp.length &gt; 1 
+                ? closestOp.reduce((prev, curr) =&gt;  {
+                    return (prev.globalIndex - vm.context.globalIndex) &lt; (curr.distance - vm.context.globalIndex) ? prev : curr;
+                })
+                : closestOp
+            
+        }
+
+        // TODO: calculate number of operations given the opsLocal to get to the closestOp
+        // this is the last operation to be performed
+
+        if (navigationalMode == "backward") {
+
+            closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
+            
+            opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
+                opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex)
+
+        } else if (navigationalMode == "forward") {
+
+            closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
+
+            opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex) - 
+                opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
+
+        }
+        
+
     }
-
-    // } else if (artefactMode == "success") {
-    // }
-
-
-    // TODO: calculate number of operations given the opsLocal to get to the closestOp
-    // this is the last operation to be performed
-
-    if (navigationalMode == "backward") {
-
-        closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
-        
-        opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
-            opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex)
-
-    } else if (navigationalMode == "forward") {
-
-        closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
-
-        opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex) - 
-            opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
-
-    }
-    
     
     console.log("opsQuantity inside Fun", opsQuantity)
     
@@ -2753,27 +2793,34 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
 }
 
 
-// finds contributors and return object with contributors and filtered opsObject
-const processOpsContributor = async (ops) =&gt; {
-    
-  var opsLocal = ops
-
-  [1,2,3,4,5,6,7,8,10,11,12,13].forEach(el =&gt; {
-    
-    opsLocal[HelperFunctions.getRandomArbitrary(0, opsLocal.length)]
-      .opMeta.userId = "stlk"
-    
-})
-
+// [1,2,3,4,5,6,7,8,10,11,12,13].forEach(el =&gt; {
+//     opsLocal[HelperFunctions.getRandomArbitrary(0, opsLocal.length)]
+//         .opMeta.userId = "stlk"
+// })
 // parse contributors
 
-var contributors = [...new Set(opsLocal.map(el =&gt; el.opMeta.userId))]
-opsLocal.filter(el =&gt; el.opMeta.userId == contributors[0])
+// TODO: get current contributor
+// finds contributors and return object with contributors and filtered opsObject
+const processOpsContributor = async (paragraph, ops) =&gt; {
+    
+    var opsLocal = ops,
+        currentContributor = paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText,
+        nextContributor,
+        contributors = [...new Set(opsLocal.opsOb.map(el =&gt; el.opMeta.userId))],
+        nextContributorOps;
 
-  
-  return {'contributors': contributors,
-         'ops': opsLocal}
-  
+    
+    // by default, just look for the closest operation
+    // associated with the contributor, different from the current one
+
+    // FIXME: assign index for contributors
+    nextContributor = contributors.filter(contributor =&gt; contributor != currentContributor)
+    
+    nextContributorOps = opsLocal.opsOb.filter(el =&gt; el.opMeta.userId == (Array.isArray(nextContributor) ? nextContributor[0] : nextContributor))
+    
+    return {'contributors': contributors,
+            'nextContributorOps': nextContributorOps}
+    
 }
 
 
@@ -2793,8 +2840,6 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
     
     var opInst = await ops,
         opTry;
-    // var unIndex;
-    
     
     if (operationalMode == "forward" &amp;&amp; // checking whether it is possible to go forward
         opInst.opsOb[vm.context.currentIndex] != undefined) {
@@ -2803,8 +2848,6 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
         console.log("vm.context.currentIndex", vm.context.currentIndex) 
         console.log("Op version", stateSelection.version)
         console.log("Forward Checking")
-        // console.log("unIndex", unIndex)
-        
         
     } else if (operationalMode == "backward" &amp;&amp; // checking whether it is possible to go backward
                opInst.opsOb[vm.context.currentIndex] != undefined) {
@@ -2813,13 +2856,9 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
         console.log("vm.context.currentIndex", vm.context.currentIndex)
         console.log("Op version", stateSelection.version)
         console.log("Backward Checking")
-        // console.log("unIndex", unIndex)
         
     } else {
-        
         console.log("Specify operationalMode")
-        // unIndex = false
-        
     }
 
 
@@ -2856,7 +2895,6 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
 
     return new Promise((resolve,reject) =&gt; {
 
-        // if (operationalMode === "backward" &amp;&amp; unIndex != false) {
         if (operationalMode === "backward") {
 
             // updating opsQuantity, if specified before amount cannot be applied
@@ -2882,7 +2920,7 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
             	console.log("Global Index", vm.context.globalIndex)
                 console.log("Applying this op:", opInst.opsOb[i].realOp)
                 console.log("Op Path", opTry.p)
-                
+
                 coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
 
                 opsToReturn.push(opInst.opsOb[i])
@@ -2921,11 +2959,8 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
                 console.log("Op Path", opTry.p)
                 
                 coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
-            	// debugger;
-
+                
                 opsToReturn.push(opInst.opsOb[i])
-                
-                
             }
             
             vm.context.currentIndex = vm.context.currentIndex + opsQuantity
@@ -2937,17 +2972,7 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
             reject()
 
         }
-        
-        // } else if (unIndex == false) {
-        // console.error("There is no )
-        // reject()
-        
-        // }
-        
-        
     })
-    
-    
 }
 
 
@@ -3099,63 +3124,73 @@ const mainWrapper = (paragraph) =&gt; {
 
 var paragraph = document.getElementsByName("idVersion2")[0]
 mainWrapper(paragraph)
-</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils");
-const ParagraphUtils = require("#paragraph-utils");
-const coreWsClientModule = require("#coreWebstratesClientAPI");
-const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
+      ParagraphUtils = require("#paragraph-utils"),
+      coreWsClientModule = require("#coreWebstratesClientAPI"),
+      vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
-// TODO:
-const toggleBackContributor = async (paragraph, operationalMode = "backward") =&gt; {
-  
+const toggleBackContributor = async (paragraph, operationalMode = "backward", artefactMode = "contributor") =&gt; {
+    
     console.log("Back Contributor");
-  
-  var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-  var stateSelection = await chooseOpBeforeApply(paragraph);
-  
+    
+    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex),
+        stateSelection = await chooseOpBeforeApply(paragraph),
+        localContributorState,
+        opsQuantity,
+        meta = {};
+    
     console.log("localOpsState", localOpsState)
-  	console.log("stateSelection", stateSelection)
-  
-  	var meta = {}
+    console.log("stateSelection", stateSelection)
+
+    localContributorState = await opsUtils.processOpsContributor(paragraph, localOpsState[0])
+    opsQuantity = await opsUtils.calculateOpsQuantity(localContributorState, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
+
+    meta["ops"] = opsQuantity &gt; 0
+        ? await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0], 
+                                                    stateSelection, operationalMode, opsQuantity)
+        : await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
+                                            stateSelection, operationalMode)
     
     
-  
-  	meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
-                                                    stateSelection, operationalMode)
-  
-  
-		await updateEditor(paragraph, meta["ops"]);
-  	await updateIndicators(paragraph, meta, "backward");
-  
-  
-  	opsUtils.processOpsContributor
-  
+    await updateEditor(paragraph, meta["ops"]);
+    await updateIndicators(paragraph, meta, operationalMode);
 }
 
-// TODO;
-const toggleForwardContributor = async (paragraph, operationalMode = "forward") =&gt; {
-  
+
+const toggleForwardContributor = async (paragraph, operationalMode = "forward", artefactMode = "contributor") =&gt; {
+    
     console.log("Forward Contributor")
-  
-    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-  	var stateSelection = await chooseOpBeforeApply(paragraph);
-  
+    
+    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex),
+        stateSelection = await chooseOpBeforeApply(paragraph),
+        localContributorState,
+        opsQuantity,
+        meta = {};
+    
+    
     console.log("localOpsState", localOpsState)
-  	console.log("stateSelection", stateSelection)
-  
-  	var meta = {}
-  
-  	meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
-                                                    stateSelection, operationalMode)
-  
-  
-		await updateEditor(paragraph, meta["ops"]);
-  	await updateIndicators(paragraph, meta, "backward");
-  
-    opsUtils.processOpsContributor
-  
-  
+    console.log("stateSelection", stateSelection)
+
+    localContributorState = await opsUtils.processOpsContributor(paragraph, localOpsState[0])
+    opsQuantity = await opsUtils.calculateOpsQuantity(localContributorState, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
+
+
+
+     meta["ops"] = opsQuantity &gt; 0
+        ? await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0], 
+                                                    stateSelection, operationalMode, opsQuantity)
+        : await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
+                                            stateSelection, operationalMode)
+    
+    
+    await updateEditor(paragraph, meta["ops"]);
+    await updateIndicators(paragraph, meta, operationalMode);
+    
+    
 }
+
+
 
 const toggleBackError = async (paragraph, operationalMode = "backward", artefactMode = "error") =&gt; {
     
@@ -3204,7 +3239,6 @@ const toggleForwardError = async (paragraph, operationalMode = "forward", artefa
     var meta = {}
 
 
-    // TODO: 
     console.log("stateOps", vm.context.stateOps)
     var opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode)
     
@@ -3216,13 +3250,10 @@ const toggleForwardError = async (paragraph, operationalMode = "forward", artefa
         : await opsUtils.processOpsAndApply(paragraph, localOpsState[0], 
                                             stateSelection, operationalMode)
 
-    
 
     await updateEditor(paragraph, meta["ops"]);
     await updateIndicators(paragraph, meta, operationalMode);
     
-    
-
     
 }
 
