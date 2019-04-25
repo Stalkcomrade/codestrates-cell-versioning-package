@@ -1,4 +1,4 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
 	"version"    : "0.4.1.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
@@ -2637,11 +2637,9 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         updateFlag = false; // whether to update the index
     
     // flag for freezing versions in case of two consequtive equal versions
-    vm.context.freezeVersion = false
-    
     // I don't need to update index in advance
     // if direction changed, I just need to reaply the same index
-    if (vm.context.freezeVersion) debugger
+    vm.context.freezeVersion = false
 
     operationalMode == "backward" 
   	? step = -1
@@ -2666,8 +2664,14 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         unOp = opInst.opsOb[vm.context.currentIndex]
         
     }
-    // if navigation direction changed, assume that the current op to be applied
+
+    if (unOp == undefined) {
+
+        console.log("No" + operationalMode + " operation to apply")
+        return
+    }
     
+    // if navigation direction changed, assume that the current op to be applied
     // if vm.context.enteredMode -&gt; navigation forward is not possible
     // after the first successful operation, assign false to variable
     if (vm.context.enteredMode &amp;&amp; opInst.opsOb[vm.context.currentIndex] != undefined &amp;&amp; operationalMode == "forward") {
@@ -2675,7 +2679,6 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         console.log("No next/previous version for the first forward Op")
         unIndex = false
 
-        // } else if (opInst.opsOb[vm.context.currentIndex + step] != undefined) { // checking whether it is possible to apply op
         } else if (opInst.opsOb[vm.context.currentIndex] != undefined) { // checking whether it is possible to apply op
 
         // looking for the duplicates
@@ -2686,7 +2689,6 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         // firstly, applying current operation
         // getting new index in the end
         unIndex = vm.context.currentIndex
-        
         vm.context.freezeVersion = duplVersion.indexOf(vm.context.currentIndex) &gt; -1 &amp;&amp; duplVersion.length &gt; 1
         
         console.log("vm.context.currentIndex", vm.context.currentIndex) 
@@ -2704,19 +2706,14 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
     return new Promise((resolve,reject) =&gt; {
 
         if (operationalMode === "backward" &amp;&amp; unIndex != false) {
-            
-            opTry = Object.assign({}, unOp.realOp)
-            
+
             // main issue is that I need real ops, not helper objects I created
+            opTry = Object.assign({}, unOp.realOp)
             var tmpPath = Object.assign([], unOp.path)
-            // console.log("tmpPath", tmpPath)
             opTry.p = tmpPath.splice(-2)
-            
             console.log("Applying this op:", unOp)
-            // console.log("Op Path", opTry.p)
             
             coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
-            
             resolve(unOp)
 
             // updating index and last step made only in case of navigation was successful
@@ -2732,15 +2729,10 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
             // don't understand why, but slicing does not working as expected 
             // that is why I am rewriting p with another path
             var tmpPath = Object.assign([], unOp.path)
-            console.log("tmpPath", tmpPath)
-
             opTry.p = tmpPath.splice(-2)
-            
             console.log("Applying this op:", unOp)
-            console.log("Op Path", opTry.p)
             
             coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
-            
             resolve(unOp)
 
             // updating index and last step made only in case of navigation was successful
@@ -2804,7 +2796,8 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
                                          paragraph.getAttribute("name") + "']" ),
         opInst = await ops,
         opTry,
-        applyFlag = false; // whether to proceed with the navigation
+        saveFlag = false, // whether to save the info about ops in the the loop or outside it's scope
+        opIsApplied = false; // whether at least one op was applied in the loop
 
 
     // updating opsQuantity, if specified before amount cannot be applied
@@ -2812,47 +2805,35 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
     if (operationalMode == "forward" &amp;&amp; // checking whether it is possible to go forward
         opInst.opsOb[vm.context.currentIndex] != undefined) {
 
-        if (!(vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length)) debugger;
+        // if (!(vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length)) debugger;
         opsQuantity = vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length
             ? opsQuantity
-            : opInst.opsOb.length - vm.context.currentIndex
-        
-        console.log("Ops Quantity to go Backward", opsQuantity)
-        
-        // console.log("vm.context.currentIndex", vm.context.currentIndex) 
-        // console.log("Op version", stateSelection.version)
-        // console.log("Forward Checking")
+            : opInst.opsOb.length - vm.context.currentIndex - 1
+     
+        console.log("Ops Quantity to go Forward", opsQuantity)
         
     } else if (operationalMode == "backward" &amp;&amp; // checking whether it is possible to go backward
                opInst.opsOb[vm.context.currentIndex] != undefined) {
 
-        if (!(vm.context.currentIndex - opsQuantity &gt; 0)) debugger;
+        // if (!(vm.context.currentIndex - opsQuantity &gt; 0)) debugger;
         opsQuantity = (vm.context.currentIndex - opsQuantity &gt; 0) // backward indexing
             ? opsQuantity
             : vm.context.currentIndex
 
-        console.log("Ops Quantity to go Forward", opsQuantity)
-        
-        // console.log("vm.context.currentIndex", vm.context.currentIndex)
-        // console.log("Op version", stateSelection.version)
-        // console.log("Backward Checking")
+        console.log("Ops Quantity to go Backward", opsQuantity)
         
     } else {
         console.log("Specify operationalMode")
     }
 
+    if (opsQuantity == 0) return
 
     // convention - index of applied operation is cached
-    
     // first, check whether it is possible to apply this
     // number of operation per chunk if not, apply as maximum as possible
     
-    // FIXME: &lt; or &lt;= including/excluding current op
-    // FIXME: should additionaly check for the first operation in the beginning of the loop
-    
     // I am specifying direction in general case when ops is already applied
     // if there is no information per index, it is applicable either way
-
     // need to specify additional parameter for last index
     // meanwhile, when mode is entered, I should specify
     // that forward is not possible
@@ -2865,78 +2846,150 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
 
     return new Promise((resolve,reject) =&gt; {
 
-            if ((operationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
-                (operationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
+        operationalMode == "backward" 
+  	    ? step = -1
+            : step = +1
 
-                operationalMode == "backward" 
-  	            ? step = +1
-                    : step = -1
-                
+        
+        if ((operationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
+            (operationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
 
-                // if navgiation direction didn't change, assume application of the next op
-                startingIndex = vm.context.currentIndex + step
+            if (!vm.context.enteredMode &amp;&amp; opInst.opsOb[vm.context.currentIndex + step * (-1)]) {
+                startingIndex = vm.context.currentIndex + step * (-1) // if not just entered versioning mode
             } else {
                 startingIndex = vm.context.currentIndex
+                console.log("")
             }
+            
+        } else {
+            // if navgiation direction didn't change, assume application of the next op
+            startingIndex = vm.context.currentIndex + step
+        }
+
+        // specifying the case, when reached the end and cannot go back in history
+        // if (!vm.context.enteredMode &amp;&amp; vm.context.lastAppliedOp.forwardOp &amp;&amp; vm.context.currentIndex == (opInst.opsOb.length - 1)) startingIndex = vm.context.currentIndex - 1
         
 
         if (operationalMode === "backward") {
 
-            for (var i = vm.context.currentIndex; i &gt;= startingIndex - opsQuantity; i--) {
+            for (var i = startingIndex; i &gt;= startingIndex - opsQuantity; i--) {
 
-                opTry = Object.assign({}, opInst.opsOb[i].realOp)
-                tmpPath = Object.assign([], opInst.opsOb[i].path)
-                opTry.p = tmpPath.splice(-2)
-                
-                // global index from the entire ops to identify proper
-            	// execution state for the code cell
-                vm.context.enteredMode = false
-                vm.context.globalIndex = opInst.opsOb[i].globalIndex
-                
-                // console.log("Global Index", vm.context.globalIndex)
-                // console.log("Applying this op:", opInst.opsOb[i].realOp)
-                // console.log("Op Path", opTry.p)
-                // debugger
-                coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
-                opsToReturn.push(opInst.opsOb[i])
+                // if cannot apply op
+                if (opInst.opsOb[i] == undefined) {
+
+                    // TODO: memorise last applied op
+                    console.error("No more ops to be applied")
+                    saveFlag = true
+                    
+                    // FIXME: if at least one op was applied
+                    if (opIsApplied) { // if at least one op was applied, saving it
+
+                        vm.context.lastAppliedOp = {forwardOp: false, backwardOp: true}
+                        vm.context.enteredMode = false
+                        vm.context.lastAction = operationalMode // specifying direction of the last navigation
+                        vm.context.currentIndex = i + 1 // previous op
+                        resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+
+                    } else {
+                        reject()
+                    }
+                    
+                    
+                    break;
+                    
+                } else {
+
+
+                    opTry = Object.assign({}, opInst.opsOb[i].realOp)
+                    tmpPath = Object.assign([], opInst.opsOb[i].path)
+                    opTry.p = tmpPath.splice(-2)
+                    
+                    // global index from the entire ops to identify proper
+            	    // execution state for the code cell
+                    vm.context.enteredMode = false
+                    opIsApplied = true
+                    vm.context.globalIndex = opInst.opsOb[i].globalIndex
+                    
+                    coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+                    opsToReturn.push(opInst.opsOb[i])
+                    
+                }
             }
 
-            // transfered update of currentIndex here
-            vm.context.currentIndex = vm.context.currentIndex - opsQuantity
-            vm.context.lastAppliedOp = {forwardOp: false, backwardOp: true}
-            vm.context.lastAction = operationalMode // specifying direction of the last navigation
+            if (!saveFlag) { // if loop wasn't interrupted
+                
+                console.log("Global Index After Ops", vm.context.globalIndex)
+                console.log("Last Op Applied", opInst.opsOb[opsToReturn.length - 1].realOp)
+                
+                // transfered update of currentIndex here
+                vm.context.currentIndex = startingIndex - opsQuantity
+                vm.context.lastAppliedOp = {forwardOp: false, backwardOp: true}
+                vm.context.lastAction = operationalMode // specifying direction of the last navigation
+                
+                resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+                
+            }
             
-            resolve(opsToReturn[opsToReturn.length - 1])
             
         } else if (operationalMode === "forward") {
-            
-            for (var i = vm.context.currentIndex; i &lt;= startingIndex + opsQuantity; i++) {
-   	        
-                opTry = Object.assign({}, opInst.opsOb[i].realOp)
-                tmpPath = Object.assign([], opInst.opsOb[i].path)
-                opTry.p = tmpPath.splice(-2)
-                
-                // global index from the entire ops to identify proper
-            	// execution state for the code cell
-                vm.context.enteredMode = false
-                vm.context.globalIndex = opInst.opsOb[i].globalIndex
 
-                // console.log("Global Index", vm.context.globalIndex)
-                // console.log("Applying this op:", opInst.opsOb[i].realOp)
-                // console.log("Op Path", opTry.p)
+            // FIXME: exclude = from &gt; if the direction changed and current op applied
+            // FIXME: configure integrity with the 1-step ops applier
+            
+            for (var i = startingIndex; i &lt;= startingIndex + opsQuantity; i++) {
                 
-                coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
-                opsToReturn.push(opInst.opsOb[i])
+                // if cannot apply op
+                if (opInst.opsOb[i] == undefined) {
+
+                    // TODO: memorise last applied op
+                    console.error("No more ops to be applied")
+                    saveFlag = true
+                    
+                    // FIXME: if at least one op was applied
+                    if (opIsApplied) { // if at least one op was applied, saving it
+
+                        vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
+                        vm.context.enteredMode = false
+                        vm.context.lastAction = operationalMode // specifying direction of the last navigation
+                        vm.context.currentIndex = i - 1 // previous op
+                        resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+
+                    } else {
+                        reject()
+                    }
+                    
+                    
+                    break;
+                    
+                } else {
+                    
+                    opTry = Object.assign({}, opInst.opsOb[i].realOp)
+                    tmpPath = Object.assign([], opInst.opsOb[i].path)
+                    opTry.p = tmpPath.splice(-2)
+                    
+                    // global index from the entire ops to identify proper
+            	    // execution state for the code cell
+                    vm.context.enteredMode = false
+                    opIsApplied = true
+                    vm.context.globalIndex = opInst.opsOb[i].globalIndex
+
+                    coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
+                    opsToReturn.push(opInst.opsOb[i])
+                }
             }
 
-            console.log("Global Index After Ops", vm.context.globalIndex)
-            console.log("Last Op Applied", opInst.opsOb[opsToReturn.length - 1].realOp)
-            
-            vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
-            vm.context.currentIndex = vm.context.currentIndex + opsQuantity
-            vm.context.lastAction = operationalMode // specifying direction of the last navigation
-            
-            resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+            if (!saveFlag) { // if loop wasn't interrupted
+                
+                console.log("Global Index After Ops", vm.context.globalIndex)
+                console.log("Last Op Applied", opInst.opsOb[opsToReturn.length - 1].realOp)
+                
+                vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
+                vm.context.currentIndex = startingIndex + opsQuantity
+                vm.context.lastAction = operationalMode // specifying direction of the last navigation
+                
+                resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+                
+            }
             
             
         } else if (typeof operationalMode === "undefined") {
@@ -2945,8 +2998,6 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
         }
     })
 }
-
-
 
 // FIXME: changeDirection for the multiple
 
@@ -3538,8 +3589,14 @@ const updateIndicators = async (paragraph, meta, mode, artefactMode) =&gt; {
     
     // showing the version of the next op to be reversed
     paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
+    
+    if (meta.ops != undefined) {
+    
+      paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
     paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
+      
+    }
+    
     
     paragraph.getElementsByClassName("versioning-v-number")[0].children[0]
       .setAttribute("current-index", vm.context.currentIndex)
