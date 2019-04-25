@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.4.1.0",
+	"version"    : "0.4.2.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -12,6 +12,7 @@
 	],
 	"changelog":
 	{
+  	"0.4.2.0" : "FIXED: forward/backward navigation works correctly",
     "0.4.1.0" : "contributor-based navigation",
     "0.4.0.0" : "WiP: navigation via artefacts",
     "0.3.9.5" : "finding ops related to execution state",
@@ -2854,7 +2855,10 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
         if ((operationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
             (operationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
 
-            if (!vm.context.enteredMode &amp;&amp; opInst.opsOb[vm.context.currentIndex + step * (-1)]) {
+            // specifying the case, when reached the end and cannot go back in history
+            // if (!vm.context.enteredMode &amp;&amp; vm.context.lastAppliedOp.forwardOp &amp;&amp; vm.context.currentIndex == (opInst.opsOb.length - 1)) startingIndex = vm.context.currentIndex - 1
+            if (!vm.context.enteredMode &amp;&amp; opInst.opsOb[vm.context.currentIndex + step * (-1)] &amp;&amp; vm.context.currentIndex == (opInst.opsOb.length - 1)) {
+                // FIXME: look here with the 8
                 startingIndex = vm.context.currentIndex + step * (-1) // if not just entered versioning mode
             } else {
                 startingIndex = vm.context.currentIndex
@@ -2866,8 +2870,7 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
             startingIndex = vm.context.currentIndex + step
         }
 
-        // specifying the case, when reached the end and cannot go back in history
-        // if (!vm.context.enteredMode &amp;&amp; vm.context.lastAppliedOp.forwardOp &amp;&amp; vm.context.currentIndex == (opInst.opsOb.length - 1)) startingIndex = vm.context.currentIndex - 1
+        
         
 
         if (operationalMode === "backward") {
@@ -3395,6 +3398,7 @@ const toggleBackCardinal = async (paragraph, operationalMode = "backward") =&gt;
   
   try {
     await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+    await updateIndicators(paragraph, meta, "backward");
   } catch {
     console.error("Cannot go Back")
   }
@@ -3442,6 +3446,7 @@ const toggleForwardCardinal = async (paragraph, operationalMode = "forward") =&g
   
   try {
     await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+    await updateIndicators(paragraph, meta, "forward");
   } catch {
     console.error("Cannot go Forward")
   }
