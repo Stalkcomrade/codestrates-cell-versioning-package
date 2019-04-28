@@ -1,4 +1,4 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph collapsed" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
 	"version"    : "0.4.3.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
@@ -7,6 +7,7 @@
 		              "code paragraphs"
 	],
 	"assets": [
+    "lodash.min.js"
 	],
 	"dependencies": [
     {
@@ -2186,7 +2187,102 @@ coreEvents.addEventListener('receivedOpsStlk', (rootElement, ops) =&gt; {
 
 
 exports = Object.assign(exports, {coreEventsModule, PathTree})
-</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">
+</pre></div><div class="paragraph code-paragraph" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">importLib([
+    "lodash.min.js",
+]).then(() =&gt; {
+
+    
+    // process states (success/error)
+    const processStates = async (stateSelection) =&gt; {
+
+        return stateSelection.map(event =&gt; ({
+            globalIndex: event.globalIndex,
+            version    : event.version,
+            at:          new Date(event.timestamp),
+            title:       event.version,
+            link:        event.version,
+            group:       event.state == "success" ? 'success'               : 'error',
+            className:   event.state == "success" ? 'entry--point--success' : 'entry--point--warn',
+            symbol:      event.state == "success" ? 'symbolTriangle'        : 'symbolCross'
+        }))
+
+    }
+
+    // generate objects for sessions 
+    const processData = async (versioningParsed) =&gt; {
+
+        var sessionObject,
+            sessionGrouped;
+        
+        sessionObject = versioningParsed[0].opsOb.map(element =&gt; ({
+            globalIndex: element.globalIndex,
+            timestamp:   element.timestamp,
+            version:     element.version,
+            sessionId:   (Object.keys(element.opMeta).indexOf("sessionId") !== -1) ? element.opMeta.sessionId : 0,
+            connectTime: (Object.keys(element.opMeta).indexOf("sessionId") !== -1) ? element.opMeta.connectTime : 0,
+            userId:      (Object.keys(element.opMeta).indexOf("sessionId") !== -1) ? element.opMeta.userId : 0
+        }))
+
+        // INFO: filtering non-sessions
+        sessionObject = Object.keys(sessionObject).map(key =&gt; sessionObject[key])
+            .filter(element =&gt; (element.sessionId !== 0))
+
+        // making Set to identify unique session and max/min
+        sessionGrouped = _.chain(sessionObject)
+            .groupBy("sessionId")
+            .map(session =&gt; ({
+                "sessionId": session[0]['sessionId'],
+                "connectTime": session[0]['connectTime'],
+                "users": [...new Set(_.map(session, "userId"))],
+                "maxConnectTime": _.maxBy(session, "timestamp")['timestamp'],
+                "minConnectTime": _.minBy(session, "timestamp")['timestamp'],
+                "maxVersion": _.maxBy(session, "timestamp")['version'],
+                "minVersion": _.minBy(session, "timestamp")['version']
+            })).value()
+
+        console.log('Data is Processed Successfully, session-grouped:', sessionGrouped)
+        return sessionGrouped
+        
+    }
+
+    const createDataObject = async (sessionGrouped) =&gt; { // INFO: updating vue vis component
+
+        return sessionGrouped.map(int =&gt; ({
+            from: new Date(int.minConnectTime),
+            to: new Date(int.maxConnectTime),
+            title: int.sessionId,
+            label: int.users,
+            group: int.users,
+            className: 'entry--point--default'
+        }))
+
+        console.log('Data Object is Created Successfully: ', sessionGrouped)
+    };
+
+    exports.processDataTml = async (localOpsState, stateSelection) =&gt; {
+
+        // getting from versioning package
+        var versioningParsed,
+            sessionGrouped,
+            statesProcessed,
+            dt;
+
+        // FIXME: remove redundant awaits
+        versioningParsed = await localOpsState // done
+        sessionGrouped = await processData(versioningParsed)
+        statesProcessed = await processStates(stateSelection)
+        console.log("Object with processed states for Timeline", statesProcessed)
+
+        dt = await createDataObject(sessionGrouped)
+        vm.context.timelineFinalDataObject = dt // should be accessible in a dependency
+
+        // TODO: unite into one array
+
+        
+
+    }
+
+})</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">
 // TODO: patching diff
 // TODO: output
 // TODO: vistrate
@@ -2245,7 +2341,6 @@ const recOps = (paragraph) =&gt; {
   return target;
   
 }
-
 // looks for execution changes in ops (fail/success)
 var findRelevantStateChanges = async (target, ops) =&gt; {
     
@@ -2257,7 +2352,6 @@ var findRelevantStateChanges = async (target, ops) =&gt; {
 
     ind = [];
     tmpArray = await ops;
-    
     targetTmp = await [target]; // SOLVED: filter target to be unique
 
     targetTmp.forEach(cellLine =&gt; { // INFO: for each path of the cell line
@@ -2276,8 +2370,6 @@ var findRelevantStateChanges = async (target, ops) =&gt; {
 
                     // last element in an array - execution index
                     // one before last is always - 1
-                    
-
                     opContainer = [...op.p]
                     opContainerBeforeMutation = [...op.p]
                     opContainer = opContainer.slice(0, op.p.length - 2)
@@ -2290,11 +2382,12 @@ var findRelevantStateChanges = async (target, ops) =&gt; {
                     // console.log(HelperFunctions.compareArrays(opContainer, cellLine.path))
                     HelperFunctions.compareArrays(opContainer, cellLine.__pathNodes[0].toPath())
                         &amp;&amp; ind.push({
+                            timestamp: el.m.ts,
                       	    opMeta: el.session,
                       	    realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
-                      			globalIndex: index // I also need to keep an index from global ops array
+                      	    globalIndex: index // I also need to keep an index from global ops array
                         })    
                     
                 }
@@ -2314,53 +2407,55 @@ var findRelevantStateChanges = async (target, ops) =&gt; {
 // taking target PathTree + ops to process
 const findRelevantPiecesInOps = async (target, ops) =&gt; {
     
-   let ind,
-	 		 tmpArray;
+    let ind,
+	tmpArray;
+    
     var targetTmp,
         opContainer;
 
     ind = [];
     tmpArray = await ops;
-  
-    // debugger;
+    
     targetTmp = await [target]; // SOLVED: filter target to be unique
     targetTmp.forEach(cellLine =&gt; { // INFO: for each path of the cell line
 
-      // console.log("Celline",cellLine)
+        // console.log("Celline",cellLine)
         // cellLine.path
         tmpArray.forEach((el, index) =&gt; { // INFO: for each version
             
             (el.op !== undefined) &amp;&amp; el.op.forEach(op =&gt; { // INFO: for each op
 
-              // there are ops with path not possible to obtain
-              // that is why we simply slice the last elements
+                // there are ops with path not possible to obtain
+                // that is why we simply slice the last elements
                 if (cellLine.path.length &lt; op.p.length) {
                     
                     opContainer = [...op.p]
                     opContainerBeforeMutation = [...op.p]
                     opContainer.pop()
                     
-                    
+                    // console.log("Inspecting!", el)
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
-                      			opMeta: el.session,
-                      			realOp: op,
+                            timestamp: el.m.ts,
+                      	    opMeta: el.session,
+                      	    realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
-                      			globalIndex: index,
+                      	    globalIndex: index,
                             change: HelperFunctions.FilterObjectByKey(op, "p") // filtering path
-                    })    
-                  
+                        })    
+                    
                 } else {
-                  
+                    
                     opContainer = [...op.p]
                     HelperFunctions.compareArrays(opContainer, cellLine.path)
                         &amp;&amp; ind.push({
-                      			opMeta: el.session,
-                      			realOp: op,
+                            timestamp: el.m.ts,
+                      	    opMeta: el.session,
+                      	    realOp: op,
                             path: opContainer,
                             version: el.v,
-                      			globalIndex: index,
+                      	    globalIndex: index,
                             change: HelperFunctions.FilterObjectByKey(op, "p")}) // filtering path
                     
                 }
@@ -2374,7 +2469,6 @@ const findRelevantPiecesInOps = async (target, ops) =&gt; {
     return ind
     
 }
-
 
 // legacy fun
 // sort ops by version and remove duplicates
@@ -2403,11 +2497,6 @@ const sortNclear = async (ind) =&gt; {
     
     
 }
-
-
-
-
-
 
 
 // FIXME: multiplicity of if/else statements
@@ -2484,6 +2573,8 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 
                 statesList.push({
                     globalIndex: el.globalIndex,
+                    timestamp: el.timestamp,
+                    version: el.version,
                     state: "error",
                     distance: el.globalIndex - vm.context.globalIndex
                 })
@@ -2492,6 +2583,8 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 
                 statesList.push({
                     globalIndex: el.globalIndex,
+                    timestamp: el.timestamp,
+                    version: el.version,
                     state: "success",
                     distance: el.globalIndex - vm.context.globalIndex
                 })
@@ -2500,6 +2593,9 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
             }
 
         })
+      
+      // FIXME: change mechanism later - use i/o model instead fo global
+      vm.context.statesListforTimeline = statesList
 
         // find the next state to navigate to considering current index
         // SOLVED: I need to consider the right sorting for this to work
@@ -2642,6 +2738,7 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
     console.log("opsQuantity inside Fun", opsQuantity)
 
     return opsQuantity
+  
 
 }
 
@@ -3081,7 +3178,6 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
     })
 }
 
-// FIXME: changeDirection for the multiple
 
 
 // looks for the corresponding opsObject for paragraph
@@ -3232,6 +3328,7 @@ mainWrapper(paragraph)
 </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
       ParagraphUtils = require("#paragraph-utils"),
       coreWsClientModule = require("#coreWebstratesClientAPI"),
+      opsProcessTimeline = require("#opsProcessTimeline"), // FIXME: temporary, remove later
       vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
@@ -3321,6 +3418,8 @@ const toggleBackError = async (paragraph, operationalMode = "backward", artefact
     localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
     stateSelection = await chooseOpBeforeApply(paragraph);
     opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
+  
+  opsProcessTimeline.processDataTml(localOpsState, vm.context.statesListforTimeline) // FIXME: delete later
 
     if (opsQuantity &gt; 0 || opsQuantity != undefined) {
         meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
@@ -3456,6 +3555,7 @@ const toggleBackTiny = async (paragraph, operationalMode = "backward") =&gt; {
     localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
     stateSelection = await chooseOpBeforeApply(paragraph);
 
+
     meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0],
         stateSelection, operationalMode)
 
@@ -3480,6 +3580,8 @@ const toggleBackCardinal = async (paragraph, operationalMode = "backward") =&gt;
     localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
     stateSelection = await chooseOpBeforeApply(paragraph);
 
+ 
+  
     meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
         stateSelection, operationalMode, 5)
 
