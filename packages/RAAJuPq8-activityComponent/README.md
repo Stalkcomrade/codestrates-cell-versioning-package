@@ -5,7 +5,7 @@
 
 | Property | Value |
 | :--- | :--- |
-| Name | Acitvity Component |
+| Name | Activity Component |
 | ID | RAAJuPq8 |
 | Version | 0.2.0 |
 | Description | Your short description. |
