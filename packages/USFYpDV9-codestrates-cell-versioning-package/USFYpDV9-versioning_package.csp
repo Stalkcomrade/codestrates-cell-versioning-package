@@ -1,4 +1,4 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph collapsed" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
 	"version"    : "0.4.3.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
@@ -80,7 +80,6 @@ const getRandomArbitrary = (min, max) =&gt; {
 
 exports = Object.assign(exports, {compareArrays, FilterObjectByKey, compareSort, 
                                   uuid, getRandomArbitrary})</pre></div><div class="paragraph code-paragraph collapsed" data-id="55EBLEgB" name="coreWebstratesClientAPI"><pre data-type="content" type="text/javascript" id="coreWebstratesClientAPI">
-
 // coreEvents
 const coreEventsModule = {};
 
@@ -2187,7 +2186,9 @@ coreEvents.addEventListener('receivedOpsStlk', (rootElement, ops) =&gt; {
 
 
 exports = Object.assign(exports, {coreEventsModule, PathTree})
-</pre></div><div class="paragraph code-paragraph" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">importLib([
+</pre></div><div class="paragraph code-paragraph" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
+
+importLib([
     "lodash.min.js",
 ]).then(() =&gt; {
 
@@ -2282,8 +2283,7 @@ exports = Object.assign(exports, {coreEventsModule, PathTree})
 
     }
 
-})</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">
-// TODO: patching diff
+})</pre></div><div class="paragraph code-paragraph collapsed" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: patching diff
 // TODO: output
 // TODO: vistrate
 // SOLVED: get current element name
@@ -3293,39 +3293,7 @@ exports = Object.assign(exports, {timeout,
                                   processOpsAndApply, processOpsAndApplyMultiple,
                                   processOpsContributor,
                                   getOpsFromCuex, saveOps,
-                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="N4V8aEMg" last-execution-state="success" name="testing Utils"><pre data-type="content" type="text/javascript" id="testing-utils">const opsUtils = require("#opsUtils");
-
-
-const mainWrapper = (paragraph) =&gt; {
-
-  var target = opsUtils.recOps(paragraph)
-	console.log(target)
-
-	var ops = opsUtils.getOps(1000).then((dt) =&gt; {return dt})
-	console.log("All Ops", ops)
-
-	var ind = opsUtils.findRelevantPiecesInOps(target, ops)
-	console.log("Relevant Ops", ind)
- 
-	// FIXME: sorting
-	var acc = opsUtils.sortNclear(ind)
-	console.log("Sorting and Duplicates Removal", acc)
-
-	// var paragraph = document.getElementsByName("idVersion2")[0].__pathNodes[0].children[0].DOMNode
-
-	var acc = ind
-  opsUtils.processOpsAndApply(paragraph, acc)
-	// OR
-	// opsUtils.processOpsAndApplyMultiple(paragraph, acc, 10)
-
-	opsUtils.updateEditor(paragraph) // FIXME: check this
-
-  
-}
-
-var paragraph = document.getElementsByName("idVersion2")[0]
-mainWrapper(paragraph)
-</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
+                                  mainWrapper})</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
       ParagraphUtils = require("#paragraph-utils"),
       coreWsClientModule = require("#coreWebstratesClientAPI"),
       opsProcessTimeline = require("#opsProcessTimeline"), // FIXME: temporary, remove later
@@ -4237,45 +4205,8 @@ importLib([
 
 // codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
 
-
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="2X8MDLHp" name="toggle-sidebar" last-execution-state="success"><pre data-type="content" type="text/javascript" id="toggle-sidebar">exports.showPipeline = () =&gt; {
-  
-  let container = document.getElementById("pipelineViewContainer");
-  
-  console.log(container)
-  
-  if (!container) {
-    
-    container = document.createElement("transient");
-    container.setAttribute("id", "pipelineViewContainer");
-    document.body.appendChild(container);
-  }
-  
-  // let pipeline = Vistrate.getOutput("pipeline");
-  // container.appendChild(pipeline.view.element);
-  
-  document.body.setAttribute("transient-pipeline", true);
-  
-};
-
-exports.hidePipeline = () =&gt; {
-  
-  let container = document.getElementById("pipelineViewContainer");
-  
-  let pipeline = Vistrate.getOutput("pipeline");
-  
-  if (!container) return;
-  
-  pipeline.view.parent.appendChild(container.firstChild);
-  
-  // 	container.remove();
-  
-  document.body.setAttribute("transient-pipeline", false);
-  
-};
-
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="yM9QFHFG" last-execution-state="success"><pre data-type="content" type="text/javascript">const ts = require("#toggle-sidebar")
-ts.showPipeline()</pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
+codestrate.addKeyBinding("codestrate.runCode", "ctrl+shift+enter", true);
+</pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
 html .paragraph .toggle-versioning-back-cardinal,
 html .paragraph .toggle-versioning-forward-tiny, 
 html .paragraph .toggle-versioning-forward-cardinal,
@@ -4341,41 +4272,5 @@ html .paragraph .toggle-versioning-forward-tiny i:after {
 
 html .paragraph .toggle-versioning-forward-cardinal i:after {
 	content: "fast_rewind";
-}
-</style></div><div class="paragraph style-paragraph collapsed" data-id="x4DeTr4v" name="sidebar"><style data-type="content" type="text/css" id="sidebar">#pipelineViewContainer {
-	position: fixed;
-	right: 75%;
-	top: 0%;
-  width: 27%;
-  height: 100%;
-  z-index: 1300;
-	background-color: var(--color-primary-shade-2);
-  transform: translate3d(100%, 0, 0);
-  box-shadow: none;
-  transition: transform var(--navigation-transition), box-shadow var(--navigation-transition);
-}
-
-#pipelineViewContainer {
-  transform: translate3d(0, 0, 0);
-  box-shadow: 0 0 10px gray;
-}
-
-#pipelineViewContainer > .visview > svg {
-	width: 100% !important;
-	height: 100% !important;
-}
-
-svg foreignObject > .viewContainer {
-	display: flex;
-/* 	position: static; */
-/* 	overflow: auto; */
-	overflow: hidden;
-}
-
-svg foreignObject > .viewContainer .visview {
-/* 	overflow: scroll; */
-/* 	display: flex; */
-/* 	width: 100%; */
-/* 	height: 100%; */
 }
 </style></div></div>
