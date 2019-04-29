@@ -2238,7 +2238,9 @@ importLib([
                 "maxConnectTime": _.maxBy(session, "timestamp")['timestamp'],
                 "minConnectTime": _.minBy(session, "timestamp")['timestamp'],
                 "maxVersion": _.maxBy(session, "timestamp")['version'],
-                "minVersion": _.minBy(session, "timestamp")['version']
+                "minVersion": _.minBy(session, "timestamp")['version'],
+          			"maxGlobalIndex": _.maxBy(session, "timestamp")['globalIndex'],
+                "minGlobalIndex": _.minBy(session, "timestamp")['globalIndex']
             })).value()
 
         console.log('Data is Processed Successfully, session-grouped:', sessionGrouped)
@@ -2254,7 +2256,9 @@ importLib([
             title: int.sessionId,
             label: int.users,
             group: int.users,
-            className: 'entry--point--default'
+            className: 'entry--point--default',
+            version: {start: int.minVersion, end: int.maxVersion},
+            globalIndex: {start: int.minGlobalIndex, end: int.maxGlobalIndex}
         }))
 
         console.log('Data Object is Created Successfully: ', sessionGrouped)
@@ -2275,11 +2279,9 @@ importLib([
         console.log("Object with processed states for Timeline", statesProcessed)
 
         dt = await createDataObject(sessionGrouped)
-        vm.context.timelineFinalDataObject = dt // should be accessible in a dependency
-
-        // TODO: unite into one array
-
         
+        dt.push(...statesProcessed) // TODO: unite into one array
+        vm.context.timelineFinalDataObject = dt // should be accessible in a dependency
 
     }
 
@@ -3293,7 +3295,7 @@ exports = Object.assign(exports, {timeout,
                                   processOpsAndApply, processOpsAndApplyMultiple,
                                   processOpsContributor,
                                   getOpsFromCuex, saveOps,
-                                  mainWrapper})</pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
+                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
       ParagraphUtils = require("#paragraph-utils"),
       coreWsClientModule = require("#coreWebstratesClientAPI"),
       opsProcessTimeline = require("#opsProcessTimeline"), // FIXME: temporary, remove later
