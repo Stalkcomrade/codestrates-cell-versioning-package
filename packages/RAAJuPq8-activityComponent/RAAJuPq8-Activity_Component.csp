@@ -1,6 +1,6 @@
-<div class="section section-visible" data-id="RAAJuPq8" data-type="package" name="Activity Component"><div class="paragraph body-paragraph collapsed" name="Documentation" data-id="8VmzkBNb"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
+<div class="section section-visible" data-id="RAAJuPq8" data-type="package" name="Activity Component" transient-focussed="true"><div class="paragraph body-paragraph collapsed" name="Documentation" data-id="8VmzkBNb"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
 <div>Your description...</div></div></div><div class="paragraph data-paragraph" name="Properties" data-id="2qnziYCb"><pre data-type="content" type="application/json" class="section-properties">{
-  "version": "0.2.0",
+  "version": "0.3.0",
   "icon": "show_chart",
   "description": "Your short description.",
   "tags": [
@@ -12,6 +12,7 @@
     "d3.min.js"
   ],
   "changelog": {
+    "0.3.5": "ADDED: indexes for navigation",
     "0.3.0": "FIXED: styling",
     "0.2.0": "ADDED: interface for enabling components per chunk",
     "0.1.6": "checking how vue works in CS",
@@ -64,7 +65,7 @@ vm.addToGlobalContext({
 
   
   
-})</pre></div><div class="paragraph code-paragraph" data-id="FzYWHuz8" name="options" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="options">const vm = Codestrate.VirtualMachines.get("text/javascript");
+})</pre></div><div class="paragraph code-paragraph collapsed" data-id="FzYWHuz8" name="options" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="options">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 const options = { 
                         intervalCornerRadius: 4,
@@ -257,17 +258,18 @@ const chunk = (data) =&gt; {
  * @param data
  */
 const groupBy = (data) =&gt; {
+    
     const results = {};
     let dateTimeStart, dateTimeEnd;
 
     for (let i = 0, l = data.length; i &lt; l; i += 1) {
         var entry = data[i],
-              { group, from, to, label, at, title, className, symbol, link, webstrateId, 
-               globalIndex, version, state} = entry;
-      
-      from = new Date(from)
-      to = new Date(to)
-      at = new Date(at)
+            { group, from, to, label, at, title, className, symbol, link, webstrateId, 
+              globalIndex, version, state} = entry;
+        
+        from = new Date(from)
+        to = new Date(to)
+        at = new Date(at)
 
         if (isDate(from) &amp;&amp; isDate(to) &amp;&amp; from &lt; to &amp;&amp; (isString(group) || isFunction(group.toString))) {
             dateTimeStart = !dateTimeStart
@@ -287,8 +289,9 @@ const groupBy = (data) =&gt; {
             }
         }
 
-      // Point definition 
-      
+        // Point definition
+        // group, at, title, symbol, className, link, webstrateId, version, globalIndex
+        
         else if (isDate(at) &amp;&amp; (isString(group) || isFunction(group.toString))) {
             dateTimeStart = !dateTimeStart
                 ? at
@@ -299,11 +302,11 @@ const groupBy = (data) =&gt; {
                 : (dateTimeEnd &lt; at ? at : dateTimeEnd);
 
             if (results[group]) {
-              results[group].push(new Point(group, at, title, symbol, className, link, globalIndex, version));
+                results[group].push(new Point(group, at, title, symbol, className, link, webstrateId, version, globalIndex));
             }
 
             else {
-              results[group] = [new Point(group, at, title, symbol, className, link, globalIndex, version)];
+                results[group] = [new Point(group, at, title, symbol, className, link, webstrateId, version, globalIndex)];
             }
         }
     }
@@ -317,7 +320,7 @@ const groupBy = (data) =&gt; {
 
 const getTimelineGroups = (data) =&gt; {
     const {results, dateTimeStart, dateTimeEnd} = groupBy(data),
-        groups = Object.keys(results);
+          groups = Object.keys(results);
 
     if (!groups.length) {
         return {
@@ -350,7 +353,7 @@ const getTimelineGroups = (data) =&gt; {
         groups
     });
 };
-          
+
 /**
  *
  * select the correct paddingInner and paddingOuter for axis x
@@ -419,17 +422,17 @@ const roundedRect = function (x, y, w, h, r, tl, tr, bl, br) {
 
 
 vm.addToGlobalContext({
-  isCollided,
-  ascending,
-  sort,
-  chunk,
-  groupBy,
-  getTimelineGroups,
-  selectPaddingInnerOuterY,
-  roundedRect
+    isCollided,
+    ascending,
+    sort,
+    chunk,
+    groupBy,
+    getTimelineGroups,
+    selectPaddingInnerOuterY,
+    roundedRect
 });
 
-</pre></div><div class="paragraph code-paragraph" data-id="rCS8sqHQ" run-on-load="true" last-execution-state="success" name="draw-entries-reference"><pre data-type="content" type="text/javascript" id="draw-entries-reference">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="rCS8sqHQ" run-on-load="true" last-execution-state="success" name="draw-entries-reference"><pre data-type="content" type="text/javascript" id="draw-entries-reference">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 importLib([
@@ -1026,7 +1029,7 @@ vm.addToGlobalContext({
   disableZoomOn
 });
   
-})</pre></div><div class="paragraph code-paragraph" data-id="B9ubdjZB" run-on-load="true" last-execution-state="success" name="timeline-chart"><pre data-type="content" type="text/javascript" id="timeline-chart">const vm = Codestrate.VirtualMachines.get("text/javascript");
+})</pre></div><div class="paragraph code-paragraph collapsed" data-id="B9ubdjZB" run-on-load="true" last-execution-state="success" name="timeline-chart"><pre data-type="content" type="text/javascript" id="timeline-chart">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 importLib([
     "moment.min.js",
@@ -1051,8 +1054,7 @@ importLib([
                 initScale: null
             }
             
-            // create the chart
-            // this.drawTimeline();
+          
         }
         
         // testing whether class methods can assess outside of class space
