@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.4.3.0",
+	"version"    : "0.5.0.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -19,6 +19,7 @@
   ],
 	"changelog":
 	{
+    "0.5.0.0" : "data for activity component is prepared upon entering versioning mode",
     "0.4.3.0" : "ADDED: activityComponent dependency",
   	"0.4.2.0" : "FIXED: forward/backward navigation works correctly",
     "0.4.1.0" : "contributor-based navigation",
@@ -2186,7 +2187,7 @@ coreEvents.addEventListener('receivedOpsStlk', (rootElement, ops) =&gt; {
 
 
 exports = Object.assign(exports, {coreEventsModule, PathTree})
-</pre></div><div class="paragraph code-paragraph" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 importLib([
     "lodash.min.js",
@@ -2202,7 +2203,8 @@ importLib([
             at:          new Date(event.timestamp),
             title:       event.version,
             link:        event.version,
-            group:       event.state == "success" ? 'success'               : 'error',
+            // group:       event.state == "success" ? 'success'               : 'error',
+            group:       event.userId,
             className:   event.state == "success" ? 'entry--point--success' : 'entry--point--warn',
             symbol:      event.state == "success" ? 'symbolTriangle'        : 'symbolCross'
         }))
@@ -2290,67 +2292,68 @@ importLib([
 // TODO: vistrate
 // SOLVED: get current element name
 
-const ParagraphUtils = require("#paragraph-utils");
-const HelperFunctions = require("#helperFunctions");
-const coreWsClientModule = require("#coreWebstratesClientAPI");
-const vm = Codestrate.VirtualMachines.get("text/javascript");
-
-
-const timeout = 200
+const ParagraphUtils = require("#paragraph-utils"),
+    HelperFunctions = require("#helperFunctions"),
+    coreWsClientModule = require("#coreWebstratesClientAPI"),
+    opsProcessTimeline = require("#opsProcessTimeline"), // FIXME: temporary, remove later
+    vm = Codestrate.VirtualMachines.get("text/javascript"),
+    timeout = 200;
 
 // receive array of ops from last til user-defined version
 // input argument controls the range of received ops
 // so, currentVersion - inputVersion
 // by default, parse all
 const getOps = (version) =&gt; {
-  
-var tsd;
-var version = typeof version  === "undefined" &amp;&amp; webstrate.version; // if version is not specified, get the whole history
-  
-webstrate.getOps(webstrate.version - version, webstrate.version, (x,y) =&gt; {
-		tsd = y;
-});
- 
-  return new Promise((resolve, reject) =&gt; {
-   
-    const interval = setInterval(() =&gt; {
-        
-        if (!Array.isArray(tsd)) {
-         	// console.log("Not Yet Resolved")
-        } else {
-          	clearInterval(interval)
-          	resolve(tsd)
-         	  console.log("Resolved", tsd)
-        }
-    }, timeout);
+
+    var tsd,
+        version;
     
-   
-});
-  
+    version = typeof version === "undefined" &amp;&amp; webstrate.version; // if version is not specified, get the whole history
+
+    webstrate.getOps(webstrate.version - version, webstrate.version, (x, y) =&gt; {
+        tsd = y;
+    });
+
+    return new Promise((resolve, reject) =&gt; {
+
+        const interval = setInterval(() =&gt; {
+
+            if (!Array.isArray(tsd)) {} else {
+                clearInterval(interval)
+                resolve(tsd)
+                console.log("Resolved", tsd)
+            }
+        }, timeout);
+
+
+    });
+
 };
 
 // helper function to create containers for elements
 const recOps = (paragraph) =&gt; {
-  
-  var el = paragraph.children[1].__pathNodes[0].children[0]
-  // console.log("INSPECT THIS", paragraph)
-  
-  var target = {
- 			 id: el.id, path: el.toPath()
+
+    var el,
+        target;
+
+    el = paragraph.children[1].__pathNodes[0].children[0]
+    target = {
+        id: el.id,
+        path: el.toPath()
+    }
+
+    return target;
 }
-  
-  // debugger;
-  return target;
-  
-}
+
 // looks for execution changes in ops (fail/success)
 var findRelevantStateChanges = async (target, ops) =&gt; {
-    
+
     let ind,
         tmpArray
-    
+
     var targetTmp,
-        opContainer;
+        opContainer,
+        opContainerBeforeMutation;
 
     ind = [];
     tmpArray = await ops;
@@ -2364,7 +2367,7 @@ var findRelevantStateChanges = async (target, ops) =&gt; {
             // INFO: choosing only ops with the reference to execution state
 
             el.op !== undefined &amp;&amp; el.op.forEach(op =&gt; { // INFO: for each op
-                
+
                 // there are ops with path not possible to obtain
                 // that is why we simply slice the last elements
 
@@ -2382,124 +2385,133 @@ var findRelevantStateChanges = async (target, ops) =&gt; {
                     // if artefact and position are equal to the given one
 
                     // console.log(HelperFunctions.compareArrays(opContainer, cellLine.path))
-                    HelperFunctions.compareArrays(opContainer, cellLine.__pathNodes[0].toPath())
-                        &amp;&amp; ind.push({
+                    HelperFunctions.compareArrays(opContainer, cellLine.__pathNodes[0].toPath()) &amp;&amp;
+                        ind.push({
                             timestamp: el.m.ts,
-                      	    opMeta: el.session,
-                      	    realOp: op,
+                            opMeta: el.session,
+                            realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
-                      	    globalIndex: index // I also need to keep an index from global ops array
-                        })    
-                    
+                            globalIndex: index // I also need to keep an index from global ops array
+                        })
+
                 }
-                
+
             })
-            
+
         })
 
     })
 
     return ind
-    
+
 }
 
 
 
 // taking target PathTree + ops to process
 const findRelevantPiecesInOps = async (target, ops) =&gt; {
-    
+
     let ind,
-	tmpArray;
-    
+        tmpArray;
+
     var targetTmp,
-        opContainer;
+        opContainer,
+        opContainerBeforeMutation;
 
     ind = [];
     tmpArray = await ops;
-    
+
     targetTmp = await [target]; // SOLVED: filter target to be unique
     targetTmp.forEach(cellLine =&gt; { // INFO: for each path of the cell line
 
         // console.log("Celline",cellLine)
         // cellLine.path
         tmpArray.forEach((el, index) =&gt; { // INFO: for each version
-            
+
             (el.op !== undefined) &amp;&amp; el.op.forEach(op =&gt; { // INFO: for each op
 
                 // there are ops with path not possible to obtain
                 // that is why we simply slice the last elements
                 if (cellLine.path.length &lt; op.p.length) {
-                    
+
                     opContainer = [...op.p]
                     opContainerBeforeMutation = [...op.p]
                     opContainer.pop()
-                    
+
                     // console.log("Inspecting!", el)
-                    HelperFunctions.compareArrays(opContainer, cellLine.path)
-                        &amp;&amp; ind.push({
+                    HelperFunctions.compareArrays(opContainer, cellLine.path) &amp;&amp;
+                        ind.push({
                             timestamp: el.m.ts,
-                      	    opMeta: el.session,
-                      	    realOp: op,
+                            opMeta: el.session,
+                            realOp: op,
                             path: opContainerBeforeMutation,
                             version: el.v,
-                      	    globalIndex: index,
+                            globalIndex: index,
                             change: HelperFunctions.FilterObjectByKey(op, "p") // filtering path
-                        })    
-                    
+                        })
+
                 } else {
-                    
+
                     opContainer = [...op.p]
-                    HelperFunctions.compareArrays(opContainer, cellLine.path)
-                        &amp;&amp; ind.push({
+                    HelperFunctions.compareArrays(opContainer, cellLine.path) &amp;&amp;
+                        ind.push({
                             timestamp: el.m.ts,
-                      	    opMeta: el.session,
-                      	    realOp: op,
+                            opMeta: el.session,
+                            realOp: op,
                             path: opContainer,
                             version: el.v,
-                      	    globalIndex: index,
-                            change: HelperFunctions.FilterObjectByKey(op, "p")}) // filtering path
-                    
+                            globalIndex: index,
+                            change: HelperFunctions.FilterObjectByKey(op, "p")
+                        }) // filtering path
+
                 }
-                
+
             })
-            
+
         })
 
     })
 
     return ind
-    
+
 }
 
 // legacy fun
 // sort ops by version and remove duplicates
 const sortNclear = async (ind) =&gt; {
 
-  var indLocal = await ind;
-  indLocal.sort(HelperFunctions.compareSort)
+    var indLocal,
+        indClear;
+
+    indLocal = await ind;
+    indLocal.sort(HelperFunctions.compareSort)
 
     // INFO: delete duplicates (legacy)
 
-    var indClear = indLocal.reduce((acc, value) =&gt; {
+    indClear = indLocal.reduce((acc, value) =&gt; {
 
-        if (acc.length &gt; 0) {  // INFO: after second call I can compare
+        if (acc.length &gt; 0) { // INFO: after second call I can compare
             // SOLVED: first two duplicates are not removed
-            
-            if (acc[acc.length - 1].version === value.version // INFO: comparing current with previous
-                &amp;&amp; HelperFunctions.compareArrays(acc[acc.length - 1].path, value.path)) { // INFO: if previous is the same
-                // INFO: not pushing duplicates
-            } else { acc.push(value) }; // INFO: push unique (legacy)
-            
-        } else { acc.push(value) }; // INFO: if it is first call, just push (legacy)
-      
-        return acc
-        
-    }, [])
-    
-    
-}
 
+            if (acc[acc.length - 1].version === value.version // INFO: comparing current with previous
+                &amp;&amp;
+                HelperFunctions.compareArrays(acc[acc.length - 1].path, value.path)) { // INFO: if previous is the same
+                // INFO: not pushing duplicates
+            } else {
+                acc.push(value)
+            }; // INFO: push unique (legacy)
+
+        } else {
+            acc.push(value)
+        }; // INFO: if it is first call, just push (legacy)
+
+        return acc
+
+    }, [])
+
+
+}
 
 // FIXME: multiplicity of if/else statements
 // used to find a proper ops quantity before navigation on contributors or state execution
@@ -2565,7 +2577,6 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 
     } else {
 
-
         // FIXME: might be several closest indexes
         // making a proper array of states
         ops.forEach(el =&gt; {
@@ -2591,18 +2602,16 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
                     distance: el.globalIndex - vm.context.globalIndex
                 })
 
-
             }
 
         })
-      
-      // FIXME: change mechanism later - use i/o model instead fo global
-      vm.context.statesListforTimeline = statesList
+
+        // FIXME: change mechanism later - use i/o model instead fo global
+        vm.context.statesListforTimeline = statesList
 
         // find the next state to navigate to considering current index
         // SOLVED: I need to consider the right sorting for this to work
         // filtering those state changes, which occured after/before current index
-
 
         if (navigationalMode == "backward") {
 
@@ -2681,7 +2690,6 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 
         } else if (navigationalMode == "forward") {
 
-
             closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &gt;= 0)
 
             closestOp = closestOp.length &gt; 1 ?
@@ -2740,7 +2748,54 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
     console.log("opsQuantity inside Fun", opsQuantity)
 
     return opsQuantity
-  
+
+}
+
+
+// use to prepare data object of code paragraphs execution information
+// succeess/fail for a timeline
+const prepareExecutionStatesObject = async (opsStatePromise) =&gt; {
+
+    var ops = await opsStatePromise, // either ops with the state changes or contributor-specific slice
+        statesList = [];
+
+    // FIXME: might be several closest indexes
+    // making a proper array of states
+    ops.forEach(el =&gt; {
+
+        if (el.realOp.od == "success" || el.realOp.od &amp;&amp;
+            el.realOp.oi == "error") {
+
+            statesList.push({
+                globalIndex: el.globalIndex,
+                userId: el.opMeta.userId,
+                timestamp: el.timestamp,
+                version: el.version,
+                state: "error",
+                distance: el.globalIndex - vm.context.globalIndex
+            })
+
+        } else { // FIXME: assuming, that all other states are successfull
+
+            statesList.push({
+                globalIndex: el.globalIndex,
+                userId: el.opMeta.userId,
+                timestamp: el.timestamp,
+                version: el.version,
+                state: "success",
+                distance: el.globalIndex - vm.context.globalIndex
+            })
+
+        }
+
+    })
+
+    // FIXME: change mechanism later - use i/o model instead fo global
+    // vm.context.statesListforTimeline = statesList
+
+    statesList = Array.isArray(statesList) ? statesList : [statesList]
+    
+    return statesList
 
 }
 
@@ -2755,34 +2810,34 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 // returns promise with opsApplied to update the indcator of the current state
 
 const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMode) =&gt; {
-    
+
     // I need to apply op to the transient pre instead of the original
-    
+
     var rootTmp = document.querySelector("pre[versioning-id-to-remove='" +
-                                         paragraph.getAttribute("name") + "']" )
-    
-    
+        paragraph.getAttribute("name") + "']")
+
+
     console.log("Applying Op to this element", rootTmp)
-    
-    
+
+
     var opInst = await ops;
     // choose next op based on the current one to apply
     // index of opInst.opsOb is relative, absolute is used in UI (version)
     // derfor, filter opsOb and pass the proper absolute/relative indexes
     // TODO: try to use a linked list here
     var opTry;
-    
+
     // first, find index within object of the current version
     // checking whether the next Op for code cell exists here
     // if not, rejecting promise
     // if it exists, I can apply op forward
     var unIndex;
-    
+
     // FIXME: overcomplicated structure
     // I am not changing any version here
     // if the previous action was opposite to the current
     // I need to add/remove version here
-    
+
     // rely on index rather than on version kept in the DOM
     // FIXME: it is temporary solution to use global scope
     // for keeping state
@@ -2794,22 +2849,22 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         changeDirectionInd = 0,
         step,
         updateFlag = false; // whether to update the index
-    
+
     // flag for freezing versions in case of two consequtive equal versions
     // I don't need to update index in advance
     // if direction changed, I just need to reaply the same index
     vm.context.freezeVersion = false
 
-    operationalMode == "backward" 
-  	? step = -1
-        : step = +1
-    
+    operationalMode == "backward" ?
+        step = -1 :
+        step = +1
+
     // used to understand when it is possible/impossible to navigate
     // also, it is handy to understand, whether index should be changed
     // duirng the current step
     // false means that current op is not applied in the maneer according to the key name
     // vm.context.lastAppliedOp = {forwardOp: false, backwardOp: false}
-    
+
     if ((operationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.backwardOp) ||
         (operationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.forwardOp)) {
         // (vm.context.enteredMode)) { // catching first forward
@@ -2821,7 +2876,7 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
     } else {
 
         unOp = opInst.opsOb[vm.context.currentIndex]
-        
+
     }
 
     if (unOp == undefined) {
@@ -2829,7 +2884,7 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         console.log("No" + operationalMode + " operation to apply")
         return
     }
-    
+
     // if navigation direction changed, assume that the current op to be applied
     // if vm.context.enteredMode -&gt; navigation forward is not possible
     // after the first successful operation, assign false to variable
@@ -2838,31 +2893,31 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         console.log("No next/previous version for the first forward Op")
         unIndex = false
 
-        } else if (opInst.opsOb[vm.context.currentIndex] != undefined) { // checking whether it is possible to apply op
+    } else if (opInst.opsOb[vm.context.currentIndex] != undefined) { // checking whether it is possible to apply op
 
         // looking for the duplicates
         st = opInst.opsOb.map(el =&gt; el.version)
-        duplVersion = st.map((e,i) =&gt; e === Number(stateSelection.version) ? i : undefined)
+        duplVersion = st.map((e, i) =&gt; e === Number(stateSelection.version) ? i : undefined)
             .filter(x =&gt; x != undefined)
-        
+
         // firstly, applying current operation
         // getting new index in the end
         unIndex = vm.context.currentIndex
         vm.context.freezeVersion = duplVersion.indexOf(vm.context.currentIndex) &gt; -1 &amp;&amp; duplVersion.length &gt; 1
-        
+
         // console.log("vm.context.currentIndex", vm.context.currentIndex) 
         console.log("Op version", stateSelection.version)
         console.log("Forward Checking")
         // console.log("unIndex", unIndex)
-        
+
     } else {
-        
+
         console.log("No next/previous version")
         unIndex = false
-        
-    }    
-    
-    return new Promise((resolve,reject) =&gt; {
+
+    }
+
+    return new Promise((resolve, reject) =&gt; {
 
         if (operationalMode === "backward" &amp;&amp; unIndex != false) {
 
@@ -2874,24 +2929,27 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
 
             // changing the errorState index to keep it possible to navigate later
             // TODO: put into opsApplyMultiple and opsApply
-            if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined 
+            if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined
             coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
             resolve(unOp)
 
             // updating index and last step made only in case of navigation was successful
             if (updateFlag) vm.context.currentIndex = vm.context.currentIndex + step
-            
+
             // updating global index to keep consistency between applyOpsMultiple and applyOp
             vm.context.globalIndex = opInst.opsOb[vm.context.currentIndex].globalIndex
-            
+
             vm.context.lastAction = operationalMode
             vm.context.enteredMode = false
-            vm.context.lastAppliedOp = {forwardOp: false, backwardOp: true}
-            
+            vm.context.lastAppliedOp = {
+                forwardOp: false,
+                backwardOp: true
+            }
+
         } else if (operationalMode === "forward" &amp;&amp; unIndex != false) {
-            
+
             opTry = Object.assign({}, unOp.realOp)
-            
+
             // don't understand why, but slicing does not working as expected 
             // that is why I am rewriting p with another path
             var tmpPath = Object.assign([], unOp.path)
@@ -2900,7 +2958,7 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
 
             // changing the errorState index to keep it possible to navigate later
             // TODO: put into opsApplyMultiple and opsApply
-            if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined 
+            if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined
             coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
             resolve(unOp)
 
@@ -2909,23 +2967,26 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
 
             // updating global index to keep consistency between applyOpsMultiple and applyOp
             vm.context.globalIndex = opInst.opsOb[vm.context.currentIndex].globalIndex
-            
+
             vm.context.lastAction = operationalMode
             vm.context.enteredMode = false
-            vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
-            
+            vm.context.lastAppliedOp = {
+                forwardOp: true,
+                backwardOp: false
+            }
+
         } else if (typeof operationalMode === "undefined") {
-            
+
             console.error("Specify operationalMode!")
             reject()
-            
+
         } else if (unIndex == false) {
-            
+
             console.error("There is no next/previous version for code chunk: ", stateSelection)
             reject()
-            
+
         }
-        
+
     })
 }
 // [1,2,3,4,5,6,7,8,10,11,12,13].forEach(el =&gt; {
@@ -2934,28 +2995,31 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
 // })
 // parse contributors
 
+
 // TODO: get current contributor
 // finds contributors and return object with contributors and filtered opsObject
 const processOpsContributor = async (paragraph, ops) =&gt; {
-    
+
     var opsLocal = ops,
         currentContributor = paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText,
         nextContributor,
         contributors = [...new Set(opsLocal.opsOb.map(el =&gt; el.opMeta.userId))],
         nextContributorOps;
 
-    
+
     // by default, just look for the closest operation
     // associated with the contributor, different from the current one
 
     // FIXME: assign index for contributors
     nextContributor = contributors.filter(contributor =&gt; contributor != currentContributor)
-    
+
     nextContributorOps = opsLocal.opsOb.filter(el =&gt; el.opMeta.userId == (Array.isArray(nextContributor) ? nextContributor[0] : nextContributor))
-    
-    return {'contributors': contributors,
-            'nextContributorOps': nextContributorOps}
-    
+
+    return {
+        'contributors': contributors,
+        'nextContributorOps': nextContributorOps
+    }
+
 }
 
 
@@ -2966,7 +3030,7 @@ const processOpsContributor = async (paragraph, ops) =&gt; {
 const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operationalMode, opsQuantity) =&gt; {
 
     var rootTmp = document.querySelector("pre[versioning-id-to-remove='" +
-                                         paragraph.getAttribute("name") + "']" ),
+            paragraph.getAttribute("name") + "']"),
         opInst = await ops,
         opTry,
         saveFlag = false, // whether to save the info about ops in the the loop or outside it's scope
@@ -2979,22 +3043,23 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
         opInst.opsOb[vm.context.currentIndex] != undefined) {
 
         // if (!(vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length)) debugger;
-        opsQuantity = vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length
-            ? opsQuantity
-            : opInst.opsOb.length - vm.context.currentIndex - 1
-     
+        opsQuantity = vm.context.currentIndex + opsQuantity &lt; opInst.opsOb.length ?
+            opsQuantity :
+            opInst.opsOb.length - vm.context.currentIndex - 1
+
         console.log("Ops Quantity to go Forward", opsQuantity)
-        
+
     } else if (operationalMode == "backward" &amp;&amp; // checking whether it is possible to go backward
-               opInst.opsOb[vm.context.currentIndex] != undefined) {
+        opInst.opsOb[vm.context.currentIndex] != undefined) {
 
         // if (!(vm.context.currentIndex - opsQuantity &gt; 0)) debugger;
         opsQuantity = (vm.context.currentIndex - opsQuantity &gt; 0) // backward indexing
-            ? opsQuantity
-            : vm.context.currentIndex
+            ?
+            opsQuantity :
+            vm.context.currentIndex
 
         console.log("Ops Quantity to go Backward", opsQuantity)
-        
+
     } else {
         console.log("Specify operationalMode")
     }
@@ -3004,26 +3069,27 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
     // convention - index of applied operation is cached
     // first, check whether it is possible to apply this
     // number of operation per chunk if not, apply as maximum as possible
-    
+
     // I am specifying direction in general case when ops is already applied
     // if there is no information per index, it is applicable either way
     // need to specify additional parameter for last index
     // meanwhile, when mode is entered, I should specify
     // that forward is not possible
-    
+
 
     var opsToReturn = [],
         opTry,
         tmpPath,
+        step,
         startingIndex; // used to catch the right op to be applied first
 
-    return new Promise((resolve,reject) =&gt; {
+    return new Promise((resolve, reject) =&gt; {
 
-        operationalMode == "backward" 
-  	    ? step = -1
-            : step = +1
+        operationalMode == "backward" ?
+            step = -1 :
+            step = +1
 
-        
+
         if ((operationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
             (operationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
 
@@ -3036,14 +3102,14 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
                 startingIndex = vm.context.currentIndex
                 console.log("")
             }
-            
+
         } else {
             // if navgiation direction didn't change, assume application of the next op
             startingIndex = vm.context.currentIndex + step
         }
 
-        
-        
+
+
 
         if (operationalMode === "backward") {
 
@@ -3055,124 +3121,140 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
                     // TODO: memorise last applied op
                     console.error("No more ops to be applied")
                     saveFlag = true
-                    
+
                     // FIXME: if at least one op was applied
                     if (opIsApplied) { // if at least one op was applied, saving it
 
-                        vm.context.lastAppliedOp = {forwardOp: false, backwardOp: true}
+                        vm.context.lastAppliedOp = {
+                            forwardOp: false,
+                            backwardOp: true
+                        }
                         vm.context.enteredMode = false
                         vm.context.lastAction = operationalMode // specifying direction of the last navigation
                         vm.context.currentIndex = i + 1 // previous op
-                        resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+                        resolve(opsToReturn[opsToReturn.length - 1]) // returning info about last op
 
                     } else {
                         reject()
                     }
-                    
-                    
+
+
                     break;
-                    
+
                 } else {
 
 
                     opTry = Object.assign({}, opInst.opsOb[i].realOp)
                     tmpPath = Object.assign([], opInst.opsOb[i].path)
                     opTry.p = tmpPath.splice(-2)
-                    
+
                     // global index from the entire ops to identify proper
-            	    // execution state for the code cell
+                    // execution state for the code cell
                     vm.context.enteredMode = false
                     opIsApplied = true
                     vm.context.globalIndex = opInst.opsOb[i].globalIndex
 
                     // changing the errorState index to keep it possible to navigate later
                     // TODO: put into opsApplyMultiple and opsApply
-                    if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined 
-                    try {coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)} catch (error) {}
+                    if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined
+                    try {
+                        coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+                    } catch (error) {}
                     opsToReturn.push(opInst.opsOb[i])
-                    
+
                 }
             }
 
             if (!saveFlag) { // if loop wasn't interrupted
-                
+
                 console.log("Global Index After Ops", vm.context.globalIndex)
                 console.log("Last Op Applied", opInst.opsOb[opsToReturn.length - 1].realOp)
-                
+
                 // transfered update of currentIndex here
                 vm.context.currentIndex = startingIndex - opsQuantity
-                vm.context.lastAppliedOp = {forwardOp: false, backwardOp: true}
+                vm.context.lastAppliedOp = {
+                    forwardOp: false,
+                    backwardOp: true
+                }
                 vm.context.lastAction = operationalMode // specifying direction of the last navigation
-                
-                resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
-                
+
+                resolve(opsToReturn[opsToReturn.length - 1]) // returning info about last op
+
             }
-            
-            
+
+
         } else if (operationalMode === "forward") {
 
             // FIXME: exclude = from &gt; if the direction changed and current op applied
             // FIXME: configure integrity with the 1-step ops applier
-            
+
             for (var i = startingIndex; i &lt;= startingIndex + opsQuantity; i++) {
-                
+
                 // if cannot apply op
                 if (opInst.opsOb[i] == undefined) {
 
                     // TODO: memorise last applied op
                     console.error("No more ops to be applied")
                     saveFlag = true
-                    
+
                     // FIXME: if at least one op was applied
                     if (opIsApplied) { // if at least one op was applied, saving it
 
-                        vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
+                        vm.context.lastAppliedOp = {
+                            forwardOp: true,
+                            backwardOp: false
+                        }
                         vm.context.enteredMode = false
                         vm.context.lastAction = operationalMode // specifying direction of the last navigation
                         vm.context.currentIndex = i - 1 // previous op
-                        resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
+                        resolve(opsToReturn[opsToReturn.length - 1]) // returning info about last op
 
                     } else {
                         reject()
                     }
-                    
-                    
+
+
                     break;
-                    
+
                 } else {
-                    
+
                     opTry = Object.assign({}, opInst.opsOb[i].realOp)
                     tmpPath = Object.assign([], opInst.opsOb[i].path)
                     opTry.p = tmpPath.splice(-2)
-                    
+
                     // global index from the entire ops to identify proper
-            	    // execution state for the code cell
+                    // execution state for the code cell
                     vm.context.enteredMode = false
                     opIsApplied = true
                     vm.context.globalIndex = opInst.opsOb[i].globalIndex
 
                     // changing the errorState index to keep it possible to navigate later
                     // TODO: put into opsApplyMultiple and opsApply
-                    if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined 
-                    try {coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)} catch (error) {}
+                    if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined
+                    try {
+                        coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
+                    } catch (error) {}
                     opsToReturn.push(opInst.opsOb[i])
                 }
             }
 
             if (!saveFlag) { // if loop wasn't interrupted
-                
+
                 console.log("Global Index After Ops", vm.context.globalIndex)
                 console.log("Last Op Applied", opInst.opsOb[opsToReturn.length - 1].realOp)
-                
-                vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
+
+                vm.context.lastAppliedOp = {
+                    forwardOp: true,
+                    backwardOp: false
+                }
                 vm.context.currentIndex = startingIndex + opsQuantity
                 vm.context.lastAction = operationalMode // specifying direction of the last navigation
-                
-                resolve(opsToReturn[opsToReturn.length - 1])  // returning info about last op
-                
+
+                resolve(opsToReturn[opsToReturn.length - 1]) // returning info about last op
+
             }
-            
-            
+
+
         } else if (typeof operationalMode === "undefined") {
             console.error("Specify operationalMode!")
             reject()
@@ -3184,118 +3266,161 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
 
 // looks for the corresponding opsObject for paragraph
 const getOpsFromCuex = (paragraph, cuex) =&gt; {
-  
-  var paragraphId = paragraph.getAttribute("data-id")
-  console.log("paragraphId", paragraphId)
-  
-  return new Promise((resolve,reject) =&gt; {
- 
-    const interval = setInterval(() =&gt; {
-        
-         if (typeof cuex === "undefined") {
-    	
 
-    console.log("Storage for paragraph is Empty!", cuex)
-    
-  } else {
-    
-    clearInterval(interval)
-    var localOpObject = cuex.filter(el =&gt; {return (el["paragraphId"] === paragraphId) &amp;&amp; el})
-    console.log("Storage for paragraph is Accessed:", localOpObject)
-    
-    resolve(localOpObject)
-    
-  }
-  
-    }, timeout);
-      
-    
-  })
- 
-  
+    var paragraphId = paragraph.getAttribute("data-id")
+    console.log("paragraphId", paragraphId)
+
+    return new Promise((resolve, reject) =&gt; {
+
+        const interval = setInterval(() =&gt; {
+
+            if (typeof cuex === "undefined") {
+
+
+                console.log("Storage for paragraph is Empty!", cuex)
+
+            } else {
+
+                clearInterval(interval)
+                var localOpObject = cuex.filter(el =&gt; {
+                    return (el["paragraphId"] === paragraphId) &amp;&amp; el
+                })
+                console.log("Storage for paragraph is Accessed:", localOpObject)
+
+                resolve(localOpObject)
+
+            }
+
+        }, timeout);
+
+
+    })
+
+
 }
 
 // adds ops per paragraph to the global scope
 const saveOps = async (paragraph, ops) =&gt; {
-  
-  // if ops loaded for the first time
-  // means, cuex=opsStorage is null
-  
-  var paragraphId = paragraph.getAttribute("data-id")
-  
-  if (typeof cuex === "undefined") {
-		
-    console.log("Creating Cuex Storage")
-    
-    const vm = Codestrate.VirtualMachines.get("text/javascript");
-		const cuex = []
-    vm.addToGlobalContext({
-    	cuex
-  	})
-    
-    cuex.push({"paragraphId":  paragraphId, "opsOb": await ops })
-    console.log("Cuex is Updated after creation with", cuex)
-    
-  } else {
-    
-    // FIXME
-    // if corresponding opsObject is already present, delete and add new
-    // var cuexInd = cuex.filter((el, index) =&gt; {if (el["paragraphId"] === paragraphId) return index})
-    // cueInd &gt; -1 &amp;&amp; cuex[cueInd] &amp;&amp; console.log("Cleaned Stale opsObject for paragraph ")
-    
-    cuex.push({"paragraphId":  paragraphId, "opsOb": await ops })
-    console.log("Cuex is Updated", cuex)
-    
-  }
 
+    // if ops loaded for the first time
+    // means, cuex=opsStorage is null
 
+    var paragraphId;
+    
+    let vm,
+        cuex;
+
+    paragraphId = paragraph.getAttribute("data-id")
+
+    if (typeof cuex === "undefined") {
+
+        console.log("Creating Cuex Storage")
+
+        vm = Codestrate.VirtualMachines.get("text/javascript");
+        cuex = []
+        vm.addToGlobalContext({
+            cuex
+        })
+
+        cuex.push({
+            "paragraphId": paragraphId,
+            "opsOb": await ops
+        })
+        console.log("Cuex is Updated after creation with", cuex)
+
+    } else {
+
+        // FIXME
+        // if corresponding opsObject is already present, delete and add new
+        // var cuexInd = cuex.filter((el, index) =&gt; {if (el["paragraphId"] === paragraphId) return index})
+        // cueInd &gt; -1 &amp;&amp; cuex[cueInd] &amp;&amp; console.log("Cleaned Stale opsObject for paragraph ")
+
+        cuex.push({
+            "paragraphId": paragraphId,
+            "opsOb": await ops
+        })
+        console.log("Cuex is Updated", cuex)
+
+    }
 }
 
 // parses ops per a paragraph
 // is used in enter/exit of the mode
 const mainWrapper = async (paragraph) =&gt; {
-  
-  var target = recOps(paragraph)
-	console.log(target) 
 
-	var ops = getOps().then((dt) =&gt; {return dt})
-	console.log("All Ops", ops)
-  
-  // TODO: rewrite later to use cuex instead 
-  vm.context.stateOps = findRelevantStateChanges(paragraph, ops)
-  console.log("Execution State Related Ops are Extracted", vm.context.stateOps)
-  
-  
-	var ind = await findRelevantPiecesInOps(target, ops)
-	console.log("Relevant Ops", ind)
+    var target,
+        ops,
+        ind,
+        acc,
+        localOpsState,
+        statesListForTimeline;
 
-  
-  // changing globalIndex of the last op 
-  // it it supposed to be used later in the beginning of the navigation
-  vm.context.globalIndex = ind[ind.length - 1].globalIndex
-  
-	var acc = sortNclear(ind)
-	console.log("Sorting and Duplicates Removal", acc)
-  
-  // debugger;
+    target = recOps(paragraph)
+    console.log(target)
 
-	var acc = ind
+    ops = getOps().then((dt) =&gt; {
+        return dt
+    })
+    console.log("All Ops", ops)
 
-  saveOps(paragraph, acc) // get ops and save them
-  console.log("Ops are save to Cuex", acc)
+    // TODO: rewrite later to use cuex instead 
+    vm.context.stateOps = findRelevantStateChanges(paragraph, ops)
+    console.log("Execution State Related Ops are Extracted", vm.context.stateOps)
 
-  return acc
-  
+
+    ind = await findRelevantPiecesInOps(target, ops)
+    console.log("Relevant Ops", ind)
+
+
+    // changing globalIndex of the last op 
+    // it it supposed to be used later in the beginning of the navigation
+    vm.context.globalIndex = ind[ind.length - 1].globalIndex
+
+    acc = sortNclear(ind)
+    console.log("Sorting and Duplicates Removal", acc)
+
+    // debugger;
+
+    acc = ind
+
+    saveOps(paragraph, acc) // get ops and save them
+    console.log("Ops are save to Cuex", acc)
+
+
+    // preparing data for timeline before navigation starts
+    localOpsState = getOpsFromCuex(paragraph, vm.context.cuex); // TODO: getOpsFromCuex into wrapper
+    statesListForTimeline = await prepareExecutionStatesObject(vm.context.stateOps) // TODO: calculateOpsQuantity - part of it to a separete function
+    opsProcessTimeline.processDataTml(localOpsState, statesListForTimeline) // FIXME: delete later
+
+    return acc
+
 }
 
 
-exports = Object.assign(exports, {timeout, 
-                                  recOps, findRelevantPiecesInOps, findRelevantStateChanges, getOps, 
-                                  sortNclear, calculateOpsQuantity,
-                                  processOpsAndApply, processOpsAndApplyMultiple,
-                                  processOpsContributor,
-                                  getOpsFromCuex, saveOps,
-                                  mainWrapper})</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
+exports = Object.assign(exports, {
+    timeout,
+    recOps,
+    findRelevantPiecesInOps,
+    findRelevantStateChanges,
+    getOps,
+    sortNclear,
+    calculateOpsQuantity,
+    prepareExecutionStatesObject,
+    processOpsAndApply,
+    processOpsAndApplyMultiple,
+    processOpsContributor,
+    getOpsFromCuex,
+    saveOps,
+    mainWrapper
+})
+
+
+
+
+
+
+
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
       ParagraphUtils = require("#paragraph-utils"),
       coreWsClientModule = require("#coreWebstratesClientAPI"),
       opsProcessTimeline = require("#opsProcessTimeline"), // FIXME: temporary, remove later
@@ -3435,8 +3560,7 @@ const toggleForwardError = async (paragraph, operationalMode = "forward", artefa
         return
     }
     
-    
-    
+      
     await updateEditor(paragraph, meta["ops"]);
     await updateIndicators(paragraph, meta, operationalMode);
 
