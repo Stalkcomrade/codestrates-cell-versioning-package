@@ -1,5 +1,5 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.5.1.0",
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+	"version"    : "0.5.2.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -19,6 +19,7 @@
   ],
 	"changelog":
 	{
+    "0.5.2.0" : "FIXED: button-based navigation",
     "0.5.1.0" : "code refactoring",
     "0.5.0.0" : "data for activity component is prepared upon entering versioning mode",
     "0.4.3.0" : "ADDED: activityComponent dependency",
@@ -3819,7 +3820,8 @@ exports = Object.assign(exports, {toggleArtefact, toggleDefaultNavigation,
 // for buttons named "cardinal", when the mode changes
 
 // FIXME: discrepancy in terminology: navigationalMode == operationalMode
-const navigationDefiner = (pg, navigationalMode) =&gt; {
+// contextArgument - whether to go 1-op or multiple ops
+const navigationDefiner = (pg, navigationalMode, contextArgument) =&gt; {
 
     var clsList = pg.getElementsByClassName("change-artefact")[0].classList,
         artefactMode;
@@ -3845,7 +3847,7 @@ const navigationDefiner = (pg, navigationalMode) =&gt; {
         return VersioningUtils.toggleArtefact(pg, navigationalMode, artefactMode)
     } else {
         // FIXME: contextArgument instead of artefactMode
-        return VersioningUtils.toggleDefaultNavigation(pg, navigationalMode, artefactMode)
+        return VersioningUtils.toggleDefaultNavigation(pg, navigationalMode, contextArgument)
     }
 }
 
@@ -3967,7 +3969,8 @@ importLib([
              {action: versioningMode,        desc: "versioningMode"},
              {action: artefact,              desc: "changeArtefact"}].forEach(action =&gt; {
 
-                 var mc = new Hammer.Manager(action.action);
+                 var mc = new Hammer.Manager(action.action),
+                     contextArgument;
                  
 	         mc.add(new Hammer.Tap({
 	             event: "tap",
@@ -3987,6 +3990,8 @@ importLib([
                      action.desc == "actionBackTiny"
                          ? contextArgument = "modular"
                          : contextArgument = "cardinal"
+
+                     // console.log(contextArgument)
                      
                      return  mc.on("tap", () =&gt; {
                          navigationDefiner(paragraph, "backward", contextArgument)
@@ -3997,6 +4002,8 @@ importLib([
                      action.desc == "actionForwardTiny"
                          ? contextArgument = "modular"
                          : contextArgument = "cardinal"
+
+                     // console.log(contextArgument)
                      
                      return  mc.on("tap", () =&gt; {
                          navigationDefiner(paragraph, "forward", contextArgument)
