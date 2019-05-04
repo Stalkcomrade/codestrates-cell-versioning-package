@@ -1,5 +1,5 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.5.0.0",
+<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+	"version"    : "0.5.1.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -19,6 +19,7 @@
   ],
 	"changelog":
 	{
+    "0.5.1.0" : "code refactoring",
     "0.5.0.0" : "data for activity component is prepared upon entering versioning mode",
     "0.4.3.0" : "ADDED: activityComponent dependency",
   	"0.4.2.0" : "FIXED: forward/backward navigation works correctly",
@@ -2187,7 +2188,7 @@ coreEvents.addEventListener('receivedOpsStlk', (rootElement, ops) =&gt; {
 
 
 exports = Object.assign(exports, {coreEventsModule, PathTree})
-</pre></div><div class="paragraph code-paragraph" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 importLib([
     "lodash.min.js",
@@ -2513,11 +2514,11 @@ const sortNclear = async (ind) =&gt; {
 
 }
 
-// FIXME: multiplicity of if/else statements
 // used to find a proper ops quantity before navigation on contributors or state execution
 // opsLocal - ops for the current code cell
-// opsStatePromise - state-related ops for the current code cell 
-const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, navigationalMode, artefactMode) =&gt; {
+// opsStatePromise - state-related ops for the current code cell
+// navigateToArgument - global index, used for vis navigation
+const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, navigationalMode, artefactMode, navigateToArgument) =&gt; {
 
     var opsQuantity,
         ops = await opsStatePromise, // either ops with the state changes or contributor-specific slice
@@ -2525,18 +2526,31 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
         statesList = [], // mapping all state changes from undefined or success to error
         navigateTo, // next state to navigate to (execution artefact)
         closestOp, // this is the op I need to navigateTo
-        finalClosestOp // last op to be applied in case of contributor-based navigation
+        finalClosestOp, // last op to be applied in case of contributor-based navigation
+        step = 0; // used in cases when navigation direction changes
 
     // Using this for easing navigation through artefacts
     // vm.context.errorState - keeping index of the last error state navigated to
     // vm.context.currentIndex - index within local array of ops for a code cell
     // vm.context.globalIndex - index within the overall array of ops for the codestrate
+
+
+   
+
+    // TODO: inject to default, then to error/succes, then to contributor
+    if ((navigationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
+        (navigationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
+        // fixme" naviugational mide"
+        navigationalMode == "backward" ?
+            step = -1 :
+            step = +1
+    }
+
     
     
     // I am already receiving filtered local ops object
     if (artefactMode == "contributor") {
 
-        // try abs
         // calculate distance for all ops from current global index
         closestOp = opsStatePromise.nextContributorOps.map(el =&gt; {
             return {
@@ -2545,8 +2559,7 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
             }
         })
 
-        // find distance
-        // if possible, then reduce
+        // find distance, if possible, then reduce
         // next op to be applied
         closestOp = closestOp.length &gt; 1 &amp;&amp; closestOp.length
             ? closestOp.reduce((prev, curr) =&gt;  {
@@ -2557,31 +2570,21 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
         finalClosestOp = opsStatePromise.nextContributorOps.filter(el =&gt; el.globalIndex == closestOp.globalIndex)
         finalClosestOp = Array.isArray(finalClosestOp) ? finalClosestOp : [finalClosestOp]
 
-        navigationalMode == backward
+        navigationalMode == "backward"
             ? opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
             opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == finalClosestOp[0].globalIndex)
             : opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == finalClosestOp[0].globalIndex) - 
             opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
         
-        // if (navigationalMode == "backward") {
-        //     // finalClosestOp = Array.isArray(finalClosestOp) ? finalClosestOp : [finalClosestOp]
-        //     opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
-        //         opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == finalClosestOp[0].globalIndex)
-
-        // } else if (navigationalMode == "forward") {
-        //     // finalClosestOp = Array.isArray(finalClosestOp) ? finalClosestOp : [finalClosestOp]
-        //     opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == finalClosestOp[0].globalIndex) - 
-        //         opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
-        // }
-
+    } else if (artefactMode == "error" || artefactMode == "success") {
         
-    } else if (artefactMode == "error" &amp;&amp; artefactMode == "success") {
-        
-
         // FIXME: might be several closest indexes
+        // FIXME: currently, states are extracted outside of current function
+        // consider this later
         // making a proper array of states
-        ops.forEach(el =&gt; {
 
+        ops.forEach(el =&gt; {
+            
             if (el.realOp.od == "success" || el.realOp.od
                 &amp;&amp; el.realOp.oi == "error") {
                 
@@ -2594,85 +2597,61 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
                 statesList.push({globalIndex : el.globalIndex,
                                  state       : "success",
                                  distance    : el.globalIndex - vm.context.globalIndex})
-                
-                
             }
-
         })
         
-        // find the next state to navigate to considering current index
-        // SOLVED: I need to consider the right sorting for this to work
-        // filtering those state changes, which occured after/before current index
 
-        navigationalMode == "backward"
-            ? navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
-                                             ((state.globalIndex - vm.context.globalIndex) &lt; 0))
-            : navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
-                                             ((state.globalIndex - vm.context.globalIndex) &gt; 0))
-
-        // TODO: checking whether navigateTo is the same as the last time
-        // if possible, then reduce
+        // FIXME:
+        // if function is used to calculate distance from current index
+        // to the specified by user state in the vis interface
+        // index to navigate to is already know, so, no need to calculate it
         
-        navigateTo = navigateTo.length &gt; 1
-            ? navigateTo.reduce((prev, curr) =&gt;  {
-                return prev.distance &lt; curr.distance ? prev : curr;
-            })
-            : navigateTo
+        if (navigateToArgument) {
 
-        navigateTo = Array.isArray(navigateTo) ? navigateTo : [navigateTo]
-        // if there is no next error exec. state, exit
-        if (navigateTo.length == 0) { return }
+            // gets global Index of state
+            navigateTo = statesList.filter(state =&gt; state.globalIndex == navigateTo)
+            navigateTo = Array.isArray(navigateToArgument) ? navigateToArgument : [{globalIndex: navigateToArgument}]
+            
+        } else {
 
-        // if current error state Index is the same as the previous one
-        if (navigateTo[0].globalIndex == vm.context.errorState) {return} else {
+            // find the next state to navigate to considering current index
+            // I need to consider the right sorting for this to work
+            // filtering those state changes, which occured after/before current index
+
+            navigationalMode == "backward"
+                ? navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
+                                                 ((state.globalIndex - vm.context.globalIndex) &lt; 0))
+                : navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
+                                                 ((state.globalIndex - vm.context.globalIndex) &gt; 0))
+
+            // TODO: checking whether navigateTo is the same as the last time
+            // if possible, then reduce
             
-            // TODO: consider local index for state
-            vm.context.errorState = navigateTo[0].globalIndex
+            navigateTo = navigateTo.length &gt; 1
+                ? navigateTo.reduce((prev, curr) =&gt;  {
+                    return prev.distance &lt; curr.distance ? prev : curr;
+                })
+                : navigateTo
+
+            navigateTo = Array.isArray(navigateTo) ? navigateTo : [navigateTo]
             
-            // ??? within and between states of different type
-            // find the index of closest operational transformation to the state
-            // var localErrorIndex,
-            //     localSuccessIndex;
+            // if there is no next error exec. state, exit
+            if (navigateTo.length == 0) { return }
+
+            // if current error state Index is the same as the previous one
+            if (navigateTo[0].globalIndex == vm.context.errorState) { return } else {
+                
+                // TODO: consider local index for state
+                vm.context.errorState = navigateTo[0].globalIndex
+                
+                // ??? within and between states of different type
+                // find the index of closest operational transformation to the state
+                // var localErrorIndex,
+                //     localSuccessIndex;
+            }
+
         }
 
-        // if (navigationalMode == "backward") {
-        // navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
-        //                                ((state.globalIndex - vm.context.globalIndex) &lt; 0))
-        // // TODO: checking whether navigateTo is the same as the last time
-        // // if possible, then reduce
-        // navigateTo = navigateTo.length &gt; 1
-        //     ? navigateTo.reduce((prev, curr) =&gt;  {
-        //         return prev.distance &lt; curr.distance ? prev : curr;
-        //     })
-        //     : navigateTo
-        // navigateTo = Array.isArray(navigateTo) ? navigateTo : [navigateTo]
-        // if there is no previous error exec. state, exit
-        // if (navigateTo.length == 0) { return }
-        // if current error state Index is the same as the previous one
-        // if (navigateTo[0].globalIndex == vm.context.errorState) {return} else {
-        // // TODO: consider local index for state
-        // vm.context.errorState = navigateTo[0].globalIndex
-        // ??? within and between states of different type
-        // find the index of closest operational transformation to the state
-        // var localErrorIndex,
-        //     localSuccessIndex;
-        // }
-        // } else if (navigationalMode == "forward") {
-        // navigateTo = statesList.filter(state =&gt; (state.state == artefactMode) &amp;&amp;
-        //                                ((state.globalIndex - vm.context.globalIndex) &gt; 0))
-        // navigateTo = navigateTo.length &gt; 1
-        //     ? navigateTo.reduce((prev, curr) =&gt;  {
-        //         return prev.distance &lt; curr.distance ? prev : curr;
-        //     })
-        //     : navigateTo
-        // navigateTo = Array.isArray(navigateTo) ? navigateTo : [navigateTo]
-        // if there is no next error exec. state, exit
-        // if (navigateTo.length == 0) { return }
-        // if (navigateTo[0].globalIndex == vm.context.errorState) {return} else {
-        // vm.context.errorState = navigateTo[0].globalIndex
-        // }
-        // }
-        
         // just realised, that some and every are the same as while and repeat
         // I need the first, which satisfies the condition
         // I am findig the closest state change
@@ -2689,24 +2668,6 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
             })
             : closestOp
         
-        // if (navigationalMode == "backward") {
-        //     closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &lt; 0)
-        // if there is something to reduce, do it
-        // closestOp = closestOp.length &gt; 1
-        //     ? closestOp.reduce((prev, curr) =&gt;  {
-        //         return (Math.abs(prev.globalIndex - navigateTo[0].globalIndex)) &lt; (Math.abs(curr.globalIndex - navigateTo[0].globalIndex)) ? prev : curr;
-        //     })
-        //     : closestOp
-        
-        // } else if (navigationalMode == "forward") {
-        // closestOp = opsLcl[0].opsOb.filter(el =&gt; (el.globalIndex - vm.context.globalIndex) &gt;= 0)
-        // closestOp = closestOp.length &gt; 1 
-        //     ? closestOp.reduce((prev, curr) =&gt;  {
-        //         return (Math.abs(prev.globalIndex - navigateTo[0].globalIndex)) &lt; (Math.abs(curr.globalIndex - navigateTo[0].globalIndex)) ? prev : curr;
-        //     })
-        //     : closestOp
-        // }
-
         // TODO: calculate number of operations given the opsLocal to get to the closestOp
         // this is the last operation to be performed
 
@@ -2717,21 +2678,38 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
             : opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex) - 
             opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
         
-        // if (navigationalMode == "backward") {
-        //     closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
-        //     opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
-        //         opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex)
-        // } else if (navigationalMode == "forward") {
-        //     closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
-        //     opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex) - 
-        //         opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
-        // }
+    } else if (artefactMode == "default") {
+        
+        // TODO: get number of states withing localOps object
+
+        navigationalMode == "backward"
+            ? opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == (vm.context.globalIndex + step)) -
+            opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == navigateToArgument)
+            : opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == navigateToArgument) - 
+            opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == (vm.context.globalIndex + step))
     }
     
     console.log("opsQuantity inside Fun", opsQuantity)
     return opsQuantity
     
 }
+
+
+
+// FIXME: fix navigation with multiple artefacts (does not working correctly)
+// SOLVED: visible index is not synch with the global vm.context.globalIndex when mixing different navigations
+// TODO: consider previous possible artefact navigations in ops calculation and application (some of the ops + indexing)
+// fx, default navigation -&gt; error state navigation
+
+// if direction changed from backward to forward
+// ops are calculated -1 or
+
+// if direction changed from forward to backward
+// +1 mb
+
+// if direction has not changed at all
+// keep as it was
+
 
 // use to prepare data object of code paragraphs execution information
 // succeess/fail for a timeline
@@ -3406,19 +3384,12 @@ exports = Object.assign(exports, {
 // since it is the easiest, though, not elegant way
 // to keep the consistency in different types of navigation
 // given current implementation
-// vm.context.lastArtefactNavigation;
-// vm.context.lastArtefactNavigation = "default"
-// vm.context.lastArtefactNavigation = "success"
-// vm.context.lastArtefactNavigation = "error"
-// vm.context.lastArtefactNavigation = "contributor"
-
+// vm.context.lastArtefactNavigation = {"default", "success", "error", "contributor"}
 
 // assumption: in case of interval, jump to the beginning of the session
 // in case of state, just jump to the state
 // TODO: enhancmenet - find closest successful state and navigate to
-
 // TODO: global todo - incorporate diff patches intogether
-
 
 // since operationalMode and artefactMode is unknown,
 // need to consturct those vars from vis objects user points to
@@ -3432,10 +3403,10 @@ const navigatePrepareInputs = (entry) =&gt; {
     visObjectIndex = entry.hasOwnProperty("from") &amp;&amp; entry.hasOwnProperty("to")
         ? entry.globalIndex.start
         : entry.globalIndex
-    
+
     if (vm.context.globalIndex - visObjectIndex &gt; 0) {
         operationalMode = "backward"
-    } else if (vm.context.globalIndex - visObjectIndex &gt; 0) {
+    } else if (vm.context.globalIndex - visObjectIndex &lt; 0) {
         operationalMode = "forward"
     } else {
         console.error("Already on possition of current vis object's index")
@@ -3450,14 +3421,14 @@ const navigatePrepareInputs = (entry) =&gt; {
         ? "success"
         : "error"
 
-    return {operationalMode, artefactMode}
+    return {operationalMode, artefactMode, visObjectIndex}
 
 }
 
 // temporarily, keep paragraph in a global scope as well 
 // entry as input
 // FIXME: operationalMode pops up twice
-const navigateVis = async(paragraph, operationalMode, artefactMode, entry) =&gt; {
+const navigateVis = async(paragraph, operationalMode, artefactMode, visObjectIndex) =&gt; {
 
     if (!operationalMode) {
         console.error("Cannot navigate via Vis interface")
@@ -3471,7 +3442,7 @@ const navigateVis = async(paragraph, operationalMode, artefactMode, entry) =&gt;
     
     localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
     stateSelection = await chooseOpBeforeApply(paragraph);
-    opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode);
+    opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, visObjectIndex);
     
     if (opsQuantity &gt; 0 || opsQuantity != undefined) {
         meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
@@ -3496,208 +3467,50 @@ vm.addToGlobalContext({
     navigatePrepareInputs
 });
 
+const toggleArtefact = async (paragraph, operationalMode, artefactMode) =&gt; {
 
-const toggleBackContributor = async (paragraph, operationalMode = "backward", artefactMode = "contributor") =&gt; {
+    vm.context.lastArtefactNavigation = artefactMode
 
-    vm.context.lastArtefactNavigation = "contributor"
-    
-    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex),
-        stateSelection = await chooseOpBeforeApply(paragraph),
+    var localOpsState,
+        stateSelection,
         localContributorState,
         opsQuantity,
         meta = {};
 
-    localContributorState = await opsUtils.processOpsContributor(paragraph, localOpsState[0])
-    opsQuantity = await opsUtils.calculateOpsQuantity(localContributorState, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
+    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
+    stateSelection = await chooseOpBeforeApply(paragraph);
+
+    // contributor-based or state-based navigation
+    // TODO: make a snippet ES6 instead of switch case
+    if (['success', 'error'].includes(artefactMode)) {
+        opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
+    } else {
+        localContributorState = await opsUtils.processOpsContributor(paragraph, localOpsState[0])
+        opsQuantity = await opsUtils.calculateOpsQuantity(localContributorState, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
+    }
 
     if (opsQuantity &gt; 0 || opsQuantity != undefined) {
         await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
                                                   stateSelection, operationalMode, opsQuantity)
     } else {
-        console.error("No previous contribotor to follow")
+        console.error("No " + operationalMode + " " + artefactMode + " to follow")
         return
     }
     
+    // universal
     await updateEditor(paragraph, meta["ops"]);
     await updateIndicators(paragraph, meta, operationalMode);
 
-    console.log("Back Contributor");
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
-}
-
-
-const toggleForwardContributor = async (paragraph, operationalMode = "forward", artefactMode = "contributor") =&gt; {
-
-    vm.context.lastArtefactNavigation = "contributor"
-    
-    var localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex),
-        stateSelection = await chooseOpBeforeApply(paragraph),
-        localContributorState,
-        opsQuantity,
-        meta = {};
-
-    localContributorState = await opsUtils.processOpsContributor(paragraph, localOpsState[0])
-    opsQuantity = await opsUtils.calculateOpsQuantity(localContributorState, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
-
-    if (opsQuantity &gt; 0 || opsQuantity != undefined) {
-        await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-                                                  stateSelection, operationalMode, opsQuantity)
-    } else {
-        console.error("No next contributor to follow")
-        return
-    }
-    
-
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, operationalMode);
-
-    console.log("Forward Contributor")
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
-}
-
-
-
-const toggleBackError = async (paragraph, operationalMode = "backward", artefactMode = "error") =&gt; {
-
-    vm.context.lastArtefactNavigation = "error"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {},
-        opsQuantity;
-
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-    opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
-  
-
-    if (opsQuantity &gt; 0 || opsQuantity != undefined) {
-        meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-                                                                stateSelection, operationalMode, opsQuantity)
-    } else {
-        console.error("No previous error state (backward) to follow")
-        return
-    }
-    
-
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, operationalMode);
-
-    console.log("Back Error")
+    console.log(operationalMode + " " + artefactMode + " Navigation")
     console.log("stateOps", vm.context.stateOps)
     console.log("opsQuantity", opsQuantity)
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
+    
 }
 
 
-const toggleForwardError = async (paragraph, operationalMode = "forward", artefactMode = "error") =&gt; {
-
-    vm.context.lastArtefactNavigation = "error"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {},
-        opsQuantity;
-
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-    opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
-
-    if (opsQuantity &gt; 0 || opsQuantity != undefined) {
-
-        meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-                                                                stateSelection, operationalMode, opsQuantity)
-        
-    } else {
-        console.error("No next error state (forward) to follow")
-        return
-    }
-    
-      
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, operationalMode);
-
-    console.log("Forward Error")
-    console.log("opsQuantity", opsQuantity)
-    console.log("stateOps", vm.context.stateOps)
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
-
-}
-
-
-const toggleBackSuccess = async (paragraph, operationalMode = "backward", artefactMode = "success") =&gt; {
-
-    vm.context.lastArtefactNavigation = "success"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {},
-        opsQuantity;
-
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-    opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
-
-    if (opsQuantity &gt; 0 || opsQuantity != undefined) {
-        meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-                                                            stateSelection, operationalMode, opsQuantity)
-    } else {
-        console.error("No previous success state (backward) to follow")
-    }
-    
-
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, operationalMode);
-
-    console.log("Back Success")
-    console.log("stateOps", vm.context.stateOps)
-    console.log("opsQuantity", opsQuantity)
-    // console.log("stateSelection", stateSelection)
-    // console.log("localOpsState", localOpsState)
-
-}
-
-const toggleForwardSuccess = async (paragraph, operationalMode = "forward", artefactMode = "success") =&gt; {
-
-    vm.context.lastArtefactNavigation = "success"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {},
-        opsQuantity
-        
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-    opsQuantity = await opsUtils.calculateOpsQuantity(vm.context.stateOps, localOpsState, vm.context.globalIndex, operationalMode, artefactMode, operationalMode)
-
-
-    if (opsQuantity &gt; 0 || opsQuantity != undefined) {
-        meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-                                                                stateSelection, operationalMode, opsQuantity)
-    }
-    
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, operationalMode);
-
-    console.log("Forward Success")
-    console.log("stateOps", vm.context.stateOps)
-    console.log("opsQuantity", opsQuantity)
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
-}
-
-
-// TODO: can't go back/forward notification
-const toggleBackTiny = async (paragraph, operationalMode = "backward") =&gt; {
+// unites tiny and cardinal
+// FIXME: add an argument
+const toggleDefaultNavigation = async (paragraph, operationalMode, contextArgument) =&gt; {
 
     vm.context.lastArtefactNavigation = "default"
     
@@ -3708,177 +3521,82 @@ const toggleBackTiny = async (paragraph, operationalMode = "backward") =&gt; {
     localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
     stateSelection = await chooseOpBeforeApply(paragraph);
 
-
-    meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0],
-        stateSelection, operationalMode)
-
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, "backward");
-
-    console.log("Back Tiny");
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
-
-}
-
-const toggleBackCardinal = async (paragraph, operationalMode = "backward") =&gt; {
-
-    vm.context.lastArtefactNavigation = "default"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {};
-    
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-
- 
-  
-    meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-        stateSelection, operationalMode, 5)
-
-
-    try {
-        await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
-        await updateIndicators(paragraph, meta, "backward");
-
-        console.log("Back Cardinal");
-        // console.log("localOpsState", localOpsState)
-        // console.log("stateSelection", stateSelection)
+    switch (contextArgument) {
+    case "modular":
         
-    } catch (error) {
-        console.error("Cannot go Back")
+        meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0], stateSelection, operationalMode)
+        await updateEditor(paragraph, meta["ops"]);
+        
+        break;
+    case "cardinal":
+
+        meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0], stateSelection, operationalMode, 5)
+        try {
+            await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
+        } catch (error) {
+            console.error("Cannot go " + operationalMode)
+        }
+        
+        break;
+        
     }
+    
+    await updateIndicators(paragraph, meta, operationalMode);
+    console.log(operationalMode + " " + contextArgument);
 
 }
-
-const toggleForwardTiny = async (paragraph, operationalMode = "forward") =&gt; {
-
-    vm.context.lastArtefactNavigation = "default"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {};
-
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-
-    meta["ops"] = await opsUtils.processOpsAndApply(paragraph, localOpsState[0],
-        stateSelection, operationalMode)
-
-    await updateEditor(paragraph, meta["ops"]);
-    await updateIndicators(paragraph, meta, "forward");
-
-    console.log("Forward Tiny");
-    // console.log("localOpsState", localOpsState)
-    // console.log("stateSelection", stateSelection)
-
-
-}
-
-const toggleForwardCardinal = async (paragraph, operationalMode = "forward") =&gt; {
-
-    vm.context.lastArtefactNavigation = "default"
-    
-    var localOpsState,
-        stateSelection,
-        meta = {}
-        
-    localOpsState = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex);
-    stateSelection = await chooseOpBeforeApply(paragraph);
-
-    meta["ops"] = await opsUtils.processOpsAndApplyMultiple(paragraph, localOpsState[0],
-        stateSelection, operationalMode, 5)
-
-    try {
-        
-        await updateEditor(paragraph, meta["ops"][meta["ops"].length - 1]);
-        await updateIndicators(paragraph, meta, "forward");
-
-        console.log("Forward Cardinal");
-        // console.log("localOpsState", localOpsState)
-        // console.log("stateSelection", stateSelection)
-        
-    } catch (error) {
-        console.error("Cannot go Forward")
-    }
-
-
-};
-
-// TODO: make modes, aka last successfull, last error, contributor-basis
 
 // defines another abstratction to choose proper ops to apply
 // or incorporate them into already existing function
 // better write a middleware
 
 const chooseOpBeforeApply = (paragraph) =&gt; {
-  
-  return new Promise((resolve,reject) =&gt; {
     
-    const interval = setInterval(() =&gt; {
- 
-    
-    var version = paragraph.getElementsByClassName("versioning-v-number")[0]
-  .children[0].innerText
-  var contributor = paragraph.getElementsByClassName("versioning-contributor")[0]
-  .children[0].innerText
-  var currentIndex = paragraph.getElementsByClassName("versioning-v-number")[0]
-   .children[0].getAttribute("current-index")
-    
-        if (typeof version === "undefined" &amp;&amp; typeof contributor === "undefined") {
- 
-         		 console.log("OpsSelector is not yet Resolved")
-          	
-          
-        } else {
-          
-         	 clearInterval(interval)
-          
-          resolve(
-            {"version"   : version, 
-          	"contributor": contributor,
-            "index"      : currentIndex}
+    return new Promise((resolve,reject) =&gt; {
+        
+        const interval = setInterval(() =&gt; {
+            
+            var version = paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText,
+                contributor = paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText,
+                currentIndex = paragraph.getElementsByClassName("versioning-v-number")[0].children[0].getAttribute("current-index");
+            
+            if (typeof version === "undefined" &amp;&amp; typeof contributor === "undefined") {
+         	console.log("OpsSelector is not yet Resolved")
+            } else {
+                
+         	clearInterval(interval)
+                resolve(
+                    {"version"    : version, 
+          	     "contributor": contributor,
+                     "index"      : currentIndex}
           	)
-          
-         	  console.log("OpsSelector is Resolved,", version, contributor, currentIndex)
-          
-        }
-    }, 300);
-    
-    
-  })
+         	console.log("OpsSelector is Resolved,", version, contributor, currentIndex)
+            }
+        }, 300);
+        
+    })
 }
-   
 
 
-// FIXME: check
 // function for editor update
 // second argument is the promise from opsApply function
 const updateEditor = async (paragraph, promise) =&gt; {
-  
-  
-  // deletes old editor
-		paragraph.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
-  
-   var codeContainer = document.querySelector("pre[versioning-id-to-remove='" +
-                                              paragraph.getAttribute("name") + "']" )
-   console.log("paragraph Update", paragraph)
-   console.log(codeContainer.innerText)
     
+    // deletes old editor
+    paragraph.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
+    
+    var codeContainer = document.querySelector("pre[versioning-id-to-remove='" +
+                                               paragraph.getAttribute("name") + "']" )
     try {
-      
-    	  codestrate.editors.CodeMirror
-  					.factory.create(paragraph.getElementsByClassName("editor default-editor CodeMirror")[0], 
+        
+    	codestrate.editors.CodeMirror
+  	    .factory.create(paragraph.getElementsByClassName("editor default-editor CodeMirror")[0], 
                             codeContainer)
-      
+        
     } catch {
-      	
       	console.log("Updated Editor")
-      
     } 
-     
+    
 }
 
 // a function to update indicators
@@ -3890,91 +3608,70 @@ const updateEditor = async (paragraph, promise) =&gt; {
 // if nothing meta is not specified
 // FIXME: update indicators based on mode - forward/backward (mode)
 const updateIndicators = async (paragraph, meta, mode, artefactMode) =&gt; {
-  
-  
-  
-  // don't update indicator when ops have the same version number
-  // if (vm.context.freezeVersion) return
-  
-  
-  // using in case when current index is after the error execution state
-  artefactMode &amp;&amp; artefactMode == "error" &amp;&amp; 
-    paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("failure")
-  
-  artefactMode &amp;&amp; artefactMode == "success" &amp;&amp; 
-    paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.remove("failure")
- 
-  var nextVersion = mode === "forward" ? +1 : -1  
- 
-  
-  // update indicator when entering mode without mutating the version
-  if (typeof meta === "undefined") {
-   	 
-    console.log("Meta is undefined!")
-    meta = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex)
-    vm.context.currentIndex = meta[0].opsOb.length - 1
-    
-    // updates only currentIndex, keeping version
-    //  if (vm.context.freezeVersion == true) {
-      
-      paragraph.getElementsByClassName("versioning-v-number")[0].children[0]
-      .setAttribute("current-index", meta[0].opsOb.length - 1)
-   //   return
-      
-   // }
-    
-    paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-    paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].version // first run
-    paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].opMeta.userId
     
     
-
+    // using in case when current index is after the error execution state
+    artefactMode &amp;&amp; artefactMode == "error" &amp;&amp; 
+        paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("failure")
     
-  } else {
+    artefactMode &amp;&amp; artefactMode == "success" &amp;&amp; 
+        paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.remove("failure")
+    
+    var nextVersion = mode === "forward" ? +1 : -1  
+    
+    // update indicator when entering mode without mutating the version
+    if (typeof meta === "undefined") {
    	
-    console.log("Ops are recieved", meta)
-    
-    // updates only currentIndex, keeping version
-    if (vm.context.freezeVersion == true) {
-      
-      paragraph.getElementsByClassName("versioning-v-number")[0].children[0]
-      .setAttribute("current-index", vm.context.currentIndex)
-      console.log("Curent Index is:", vm.context.currentIndex)
-      return
-      
+        console.log("Meta is undefined!")
+        meta = await opsUtils.getOpsFromCuex(paragraph, vm.context.cuex)
+        vm.context.currentIndex = meta[0].opsOb.length - 1
+        
+        paragraph.getElementsByClassName("versioning-v-number")[0].children[0]
+            .setAttribute("current-index", meta[0].opsOb.length - 1)
+        
+        paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+        paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].version // first run
+        paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta[0].opsOb[meta[0].opsOb.length - 1].opMeta.userId
+        
+    } else {
+   	
+        console.log("Ops are recieved", meta)
+        
+        // updates only currentIndex, keeping version
+        if (vm.context.freezeVersion == true) {
+            
+            paragraph.getElementsByClassName("versioning-v-number")[0].children[0].setAttribute("current-index", vm.context.currentIndex)
+            console.log("Curent Index is:", vm.context.currentIndex)
+            return
+            
+        }
+        
+        // showing the version of the next op to be reversed
+        paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+        
+        if (meta.ops != undefined) {
+            
+            paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
+            paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
+            
+        }
+        
+        paragraph.getElementsByClassName("versioning-v-number")[0].children[0]
+            .setAttribute("current-index", vm.context.currentIndex)
+        
     }
     
-    // showing the version of the next op to be reversed
-    paragraph.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-    
-    if (meta.ops != undefined) {
-    
-      paragraph.getElementsByClassName("versioning-v-number")[0].children[0].innerText = meta.ops.version
-    paragraph.getElementsByClassName("versioning-contributor")[0].children[0].innerText = meta.ops.opMeta.userId
-      
-    }
-    
-    
-    paragraph.getElementsByClassName("versioning-v-number")[0].children[0]
-      .setAttribute("current-index", vm.context.currentIndex)
-    
-   }
-  
-  // Saving last action
-  // vm.context.lastAction = mode
-  
 }
 
 // changes artefact for navigation
 const changeNavigationArtefact = async (pg) =&gt; {
     
-  var clsList = pg.getElementsByClassName("change-artefact")[0].classList
-  console.log("Change Artefact")
-  
-  console.log(clsList.contains("changed-1"))
-  	// debugger
-  
-  clsList.contains("changed-1")
+    var clsList = pg.getElementsByClassName("change-artefact")[0].classList
+    
+    // console.log("Change Artefact")
+    // console.log(clsList.contains("changed-1"))
+    
+    clsList.contains("changed-1")
     
     switch(true) {
 
@@ -3994,7 +3691,7 @@ const changeNavigationArtefact = async (pg) =&gt; {
         pg.getElementsByClassName("change-artefact")[0].classList.remove("default");
         pg.getElementsByClassName("change-artefact")[0].classList.add("changed-1");
         break;
-    
+        
     }
     
     
@@ -4004,177 +3701,152 @@ const changeNavigationArtefact = async (pg) =&gt; {
 // pg - paragraph
 // content - innerText of code paragraph
 const enterVersioningMode = async (pg) =&gt; {
-  
-  var initContent = pg.children[1]
-  var content = document.getElementById("save-container-" + pg.getAttribute) === null 
-  					? initContent.innerText
-            : document.getElementById("save-container-" + pg.getAttribute).innerText
-  
-  
-   
-  if (pg.getElementsByClassName("toggle-versioning-mode")[0]
-      .getAttribute("class").indexOf("v-active") &gt; -1) { // exit mode
     
-    vm.context.paragraph = null
-    vm.context.enteredMode = false // used to not allow the first forward op to be applied
-    vm.context.lastAppliedOp = {forwardOp: false, backwardOp: false}
-    
-    // changes the indicator
-    pg.getElementsByClassName("toggle-versioning-mode")[0].classList.remove("v-active")
-    pg.getElementsByClassName("versioning-v-number")[0].children[0].innerText = ""
-    pg.getElementsByClassName("versioning-v-number")[0].children[0].setAttribute("current-index", "")
-    pg.getElementsByClassName("versioning-contributor")[0].children[0].innerText = ""
-  
-    // deletes save-container
-	  document.getElementById("save-container-" + pg.getAttribute("name")).remove()
-    pg.getElementsByClassName("transient-save")[0].remove() // delete the whole transient element
+    var initContent = pg.children[1],
+        content = document.getElementById("save-container-" + pg.getAttribute) === null 
+  	? initContent.innerText
+        : document.getElementById("save-container-" + pg.getAttribute).innerText
     
     
-    // deletes old editor
-		pg.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
     
-    try {
-      
-    	  codestrate.editors.CodeMirror
-  					.factory.create(pg.getElementsByClassName("editor default-editor CodeMirror")[0], 
-      			           			pg.getElementsByTagName("pre")[0])
-      
-    } catch {
-      	
-      	console.log("Exit Versioning Mode")
-      
-    }      	 
-     
-  } else { // enter mode
-    
-    // fetching ops history to retrive ops per paragraph 
-    var meta = await opsUtils.mainWrapper(pg);
-    
-    vm.context.paragraph = pg // used for navigation via vis interface
-    vm.context.enteredMode = true // used to not allow the first forward op to be applied
-    vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
-    // false means that current op is not applied in the maneer according to the key name
-    
-    // updating indicator
-    updateIndicators(pg)
-    pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
-          
-		const transientContainer = document.createElement("transient")
-    transientContainer.classList.add("transient-save")
-    
-    
-		const codeContainer = document.createElement("pre");
-    const textNode = document.createTextNode(content); 
-    codeContainer.setAttribute("versioning-id-to-remove", pg.getAttribute("name"))
-		codeContainer.setAttribute("data-type", "content");
-		codeContainer.setAttribute("type", "text/javascript");
-		codeContainer.appendChild(textNode);
-    
-    
-    // deep copy already existing node (persisten path Node)
-    // FIXME: check, whether it will be observed
-    coreWsClientModule.PathTree(codeContainer)
-    
-		transientContainer.appendChild(codeContainer);
-		pg.appendChild(transientContainer)
-  
- 
-   // before removing node, save to DOM to restore from it later
-   // TODO: auto-naming for code chunks?
-   // keep ID in the header?
-    
-    // to work correctly, paragraph name should be provided
-    // don't need to remove previous pre
+    if (pg.getElementsByClassName("toggle-versioning-mode")[0]
+        .getAttribute("class").indexOf("v-active") &gt; -1) { // exit mode
+        
+        vm.context.paragraph = null
+        vm.context.enteredMode = false // used to not allow the first forward op to be applied
+        vm.context.lastAppliedOp = {forwardOp: false, backwardOp: false}
+        
+        // changes the indicator
+        pg.getElementsByClassName("toggle-versioning-mode")[0].classList.remove("v-active")
+        pg.getElementsByClassName("versioning-v-number")[0].children[0].innerText = ""
+        pg.getElementsByClassName("versioning-v-number")[0].children[0].setAttribute("current-index", "")
+        pg.getElementsByClassName("versioning-contributor")[0].children[0].innerText = ""
+        
+        // deletes save-container
+	document.getElementById("save-container-" + pg.getAttribute("name")).remove()
+        pg.getElementsByClassName("transient-save")[0].remove() // delete the whole transient element
+        
+        
+        // deletes old editor
+	pg.getElementsByClassName("CodeMirror cm-s-monokai CodeMirror-wrap")[0].remove()
+        
+        try {
+            
+    	    codestrate.editors.CodeMirror
+  		.factory.create(pg.getElementsByClassName("editor default-editor CodeMirror")[0], 
+      			        pg.getElementsByTagName("pre")[0])
+            
+        } catch {
+      	    
+      	    console.log("Exit Versioning Mode")
+            
+        }      	 
+        
+    } else { // enter mode
+        
+        // fetching ops history to retrive ops per paragraph 
+        var meta = await opsUtils.mainWrapper(pg);
+        
+        vm.context.paragraph = pg // used for navigation via vis interface
+        vm.context.enteredMode = true // used to not allow the first forward op to be applied
+        vm.context.lastAppliedOp = {forwardOp: true, backwardOp: false}
+        // false means that current op is not applied in the maneer according to the key name
+        
+        // updating indicator
+        updateIndicators(pg)
+        pg.getElementsByClassName("toggle-versioning-mode")[0].classList.add("v-active")
+        
+	const transientContainer = document.createElement("transient")
+        transientContainer.classList.add("transient-save")
+        
+        
+	const codeContainer = document.createElement("pre");
+        const textNode = document.createTextNode(content); 
+        codeContainer.setAttribute("versioning-id-to-remove", pg.getAttribute("name"))
+	codeContainer.setAttribute("data-type", "content");
+	codeContainer.setAttribute("type", "text/javascript");
+	codeContainer.appendChild(textNode);
+        
+        
+        // deep copy already existing node (persisten path Node)
+        // FIXME: check, whether it will be observed
+        coreWsClientModule.PathTree(codeContainer)
+        
+	transientContainer.appendChild(codeContainer);
+	pg.appendChild(transientContainer)
+        
+        
+        // before removing node, save to DOM to restore from it later
+        // TODO: auto-naming for code chunks?
+        // keep ID in the header?
+        
+        // to work correctly, paragraph name should be provided
+        // don't need to remove previous pre
   	var containerSaveParagraph = document.createElement("transient")
   	containerSaveParagraph.setAttribute("id", "save-container-" + pg.getAttribute("name"))
   	containerSaveParagraph.setAttribute("class", "hidden")
   	containerSaveParagraph.style.display = "none"
   	containerSaveParagraph.innerText = content
-    document.body.appendChild(containerSaveParagraph)
-    
-   
-  // removing old editor
-  pg.getElementsByClassName("editor default-editor CodeMirror")[0].children[0].remove()
-    
-    try {
+        document.body.appendChild(containerSaveParagraph)
+        
+        
+        // removing old editor
+        pg.getElementsByClassName("editor default-editor CodeMirror")[0].children[0].remove()
+        
+        try {
 
-// updates code editor
-codestrate.editors.CodeMirror
-       .factory.create(pg.getElementsByClassName("editor default-editor CodeMirror")[0],
-                      codeContainer)
-      
-    } catch {
-      
-      	console.log("Updated Editor")
-      
+            // updates code editor
+            codestrate.editors.CodeMirror
+                .factory.create(pg.getElementsByClassName("editor default-editor CodeMirror")[0],
+                                codeContainer)
+            
+        } catch {
+            
+      	    console.log("Updated Editor")
+            
+        }
+        
     }
-    
-  }
 
 }
 
 
-exports = Object.assign(exports, {toggleBackTiny, toggleBackCardinal,
-                                  toggleForwardTiny, toggleForwardCardinal, 
-                                  toggleBackContributor, toggleForwardContributor,
-                                  toggleBackError, toggleForwardError,
-                                  toggleBackSuccess, toggleForwardSuccess,
-                                  enterVersioningMode, changeNavigationArtefact})</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">const VersioningUtils = require("#versioning-utils");
+exports = Object.assign(exports, {toggleArtefact, toggleDefaultNavigation,
+                                  enterVersioningMode, changeNavigationArtefact})
+</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">const VersioningUtils = require("#versioning-utils");
 
 // Bindings for artefact navigation should only work 
 // for buttons named "cardinal", when the mode changes
 
+// FIXME: discrepancy in terminology: navigationalMode == operationalMode
 const navigationDefiner = (pg, navigationalMode) =&gt; {
 
-    // artefactType
-    var clsList = pg.getElementsByClassName("change-artefact")[0].classList
-    clsList.contains("changed-1")
-
-    if (navigationalMode == "backward") {
-
-        switch(true) {
-
-        case clsList.contains("changed-1"): // error navigation
-            return VersioningUtils.toggleBackError(pg)
-            break;
-        case clsList.contains("changed-2"): // success navigation
-            return VersioningUtils.toggleBackSuccess(pg)
-            break;
-        case clsList.contains("changed-3"): // contributor navigation
-            return VersioningUtils.toggleBackContributor(pg)
-            break;
-        case clsList.contains("default"): // default navigation
-            return VersioningUtils.toggleBackCardinal(pg)
-            break;
-            
-        }
-        
-
-    } else if (navigationalMode == "forward") {
-
-        switch(true) {
-
-        case clsList.contains("changed-1"): // error navigation
-             return VersioningUtils.toggleForwardError(pg)
-            break;
-        case clsList.contains("changed-2"): // success navigation
-             return VersioningUtils.toggleForwardSuccess(pg)
-            break;
-        case clsList.contains("changed-3"): // contributor navigation
-            return VersioningUtils.toggleForwardContributor(pg)
-            break;
-        case clsList.contains("default"): // default navigation
-            return VersioningUtils.toggleForwardCardinal(pg)
-            break;
-            
-        }
-
-    } else {
-        
-        console.error("Define navigation direction!")
-        
-    }
+    var clsList = pg.getElementsByClassName("change-artefact")[0].classList,
+        artefactMode;
     
+    switch(true) {
+
+        // TODO: artefact mode
+    case clsList.contains("changed-1"): // error navigation
+        artefactMode = "error"
+        break;
+    case clsList.contains("changed-2"): // success navigation
+        artefactMode = "success"
+        break;
+    case clsList.contains("changed-3"): // contributor navigation
+        artefactMode = "contributor"
+        break;
+    case clsList.contains("default"): // default navigation
+        artefactMode = "default"
+        break;
+    }
+
+    if ([artefactMode].includes("error", "success", "contributor")) {
+        return VersioningUtils.toggleArtefact(pg, navigationalMode, artefactMode)
+    } else {
+        // FIXME: contextArgument instead of artefactMode
+        return VersioningUtils.toggleDefaultNavigation(pg, navigationalMode, artefactMode)
+    }
 }
 
 importLib([
@@ -4236,23 +3908,23 @@ importLib([
 	iconForwardCardinal.classList.add("material-icons");
 	actionForwardCardinal.appendChild(iconForwardCardinal);
 	header.appendChild(actionForwardCardinal);
-      
-      // change artefact for navigation
-      
-  let artefact = document.createElement("div");
+        
+        // change artefact for navigation
+        
+        let artefact = document.createElement("div");
 	artefact.classList.add("action"); 
 	artefact.classList.add("change-artefact");
-  artefact.classList.add("default");
+        artefact.classList.add("default");
 	artefact.setAttribute("tooltip", "true");
 	
 	let iconArtefact = document.createElement("i");
 	iconArtefact.classList.add("material-icons");
 	artefact.appendChild(iconArtefact);
 	header.appendChild(artefact);
-      
-      
-  // indicator that mode that versioning mode is enabled 
-  let versioningMode = document.createElement("div");
+        
+        
+        // indicator that mode that versioning mode is enabled 
+        let versioningMode = document.createElement("div");
 	versioningMode.classList.add("action"); 
 	versioningMode.classList.add("toggle-versioning-mode");
 	versioningMode.setAttribute("tooltip", "true");
@@ -4261,92 +3933,96 @@ importLib([
 	iconVersioningMode.classList.add("material-icons");
 	versioningMode.appendChild(iconVersioningMode);
 	header.appendChild(versioningMode);
-      
-  // current version indicator
-      
-   let versionNumberIndicator = document.createElement("div");
-	 versionNumberIndicator.classList.add("versioning-v-number");
-	 versionNumberIndicator.setAttribute("tooltip", "true");
-      
-   let versionText = document.createElement("p")
-   versionText.innerText = ""
-   versionNumberIndicator.appendChild(versionText)
-   header.appendChild(versionNumberIndicator)   
-   
-      
-  // current contributor indicator
-      
-   let versionContributorIndicator = document.createElement("div");
-	 versionContributorIndicator.classList.add("versioning-contributor");
-	 versionContributorIndicator.setAttribute("tooltip", "true");
         
-   let versionContributorText = document.createElement("p")
-   versionContributorText.innerText = ""
-   versionContributorIndicator.appendChild(versionContributorText)
-   header.appendChild(versionContributorIndicator)   
-      
+        // current version indicator
+        
+        let versionNumberIndicator = document.createElement("div");
+	versionNumberIndicator.classList.add("versioning-v-number");
+	versionNumberIndicator.setAttribute("tooltip", "true");
+        
+        let versionText = document.createElement("p")
+        versionText.innerText = ""
+        versionNumberIndicator.appendChild(versionText)
+        header.appendChild(versionNumberIndicator)   
+        
+        
+        // current contributor indicator
+        
+        let versionContributorIndicator = document.createElement("div");
+	versionContributorIndicator.classList.add("versioning-contributor");
+	versionContributorIndicator.setAttribute("tooltip", "true");
+        
+        let versionContributorText = document.createElement("p")
+        versionContributorText.innerText = ""
+        versionContributorIndicator.appendChild(versionContributorText)
+        header.appendChild(versionContributorIndicator)   
+        
 
-     try {
-       
-        [{action: actionBackTiny,        desc: "actionBackTiny"}, 
-         {action: actionBackCardinal,    desc: "actionBackCardinal"},
-         {action: actionForwardTiny,     desc: "actionForwardTiny"}, 
-         {action: actionForwardCardinal, desc: "actionForwardCardinal"},
-         {action: versioningMode,        desc: "versioningMode"},
-         {action: artefact,              desc: "changeArtefact"}].forEach(action =&gt; {
+        try {
+            
+            [{action: actionBackTiny,        desc: "actionBackTiny"}, 
+             {action: actionBackCardinal,    desc: "actionBackCardinal"},
+             {action: actionForwardTiny,     desc: "actionForwardTiny"}, 
+             {action: actionForwardCardinal, desc: "actionForwardCardinal"},
+             {action: versioningMode,        desc: "versioningMode"},
+             {action: artefact,              desc: "changeArtefact"}].forEach(action =&gt; {
 
-             var mc = new Hammer.Manager(action.action);
-             
-	     mc.add(new Hammer.Tap({
-	         event: "tap",
-	         taps: 1
-	     }));
+                 var mc = new Hammer.Manager(action.action);
+                 
+	         mc.add(new Hammer.Tap({
+	             event: "tap",
+	             taps: 1
+	         }));
 
-	     mc.add(new Hammer.Press({
-	         event: "longpress",
-	         time: 250
-	     }));
-             
-             switch(action.desc) {
+	         mc.add(new Hammer.Press({
+	             event: "longpress",
+	             time: 250
+	         }));
 
-             case "actionBackTiny":
-                 return  mc.on("tap", () =&gt; {
-          	     VersioningUtils.toggleBackTiny(paragraph);                 
-	         });
-             case "actionBackCardinal":
-                 return   mc.on("tap", () =&gt; {
-                   navigationDefiner(paragraph, "backward")
-                   // VersioningUtils.toggleBackCardinal(paragraph);
-                   
-	         });
-             case "actionForwardTiny":
-                 return  mc.on("tap", () =&gt; {
-                     VersioningUtils.toggleForwardTiny(paragraph);
-	         });
-             case "actionForwardCardinal":
-                 return   mc.on("tap", () =&gt; {
-                   navigationDefiner(paragraph, "forward")
-                   // VersioningUtils.toggleForwardCardinal(paragraph);
-                   
-	         });
-               case "versioningMode":
-                 return mc.on("tap", () =&gt; {
-                   VersioningUtils.enterVersioningMode(paragraph);
-                 })
-                  case "changeArtefact":
-                 return mc.on("tap", () =&gt; {
-                   VersioningUtils.changeNavigationArtefact(paragraph);
-                 })
-             }
-             
-             
-         })
-       
-     } catch {
-       
-       console.log("Error!");
-       
-     }
+
+                 // FIXME: artefactMode as input
+                 // new ES6 notation is more convenient than switch statements
+                 if (['actionBackTiny', 'actionBackCardinal'].includes(action.desc)) {
+
+                     action.desc == "actionBackTiny"
+                         ? contextArgument = "modular"
+                         : contextArgument = "cardinal"
+                     
+                     return  mc.on("tap", () =&gt; {
+                         navigationDefiner(paragraph, "backward", contextArgument)
+	             });
+                     
+                 } else if (["actionForwardTiny", "actionForwardCardinal"].includes(action.desc)) {
+
+                     action.desc == "actionForwardTiny"
+                         ? contextArgument = "modular"
+                         : contextArgument = "cardinal"
+                     
+                     return  mc.on("tap", () =&gt; {
+                         navigationDefiner(paragraph, "forward", contextArgument)
+	             });
+                     
+                 } else if (action.desc == "versioningMode") {
+
+                     return mc.on("tap", () =&gt; {
+                         VersioningUtils.enterVersioningMode(paragraph);
+                     })
+                     
+                 } else if (action.desc == "changeArtefact") {
+
+                     return mc.on("tap", () =&gt; {
+                         VersioningUtils.changeNavigationArtefact(paragraph);
+                     })
+
+                 }
+                 
+             })
+            
+        } catch {
+            
+            console.log("Error!");
+            
+        }
         
     };
 
@@ -4372,9 +4048,9 @@ importLib([
 
 
 // codestrate.addCommand("codestrates.cellVersioning", "Cell Versioning", (event) =&gt; {
-    
+
 //     console.log(event)
-    
+
 //     let paragraph;
 //     if (event !== null &amp;&amp; event.target !== null) {
 // 	let target = event.target;
@@ -4394,6 +4070,7 @@ importLib([
 // codestrate.addKeyBinding("codestrates.cellVersioning", "ctrl+shift+v", true);
 
 codestrate.addKeyBinding("codestrate.runCode", "ctrl+shift+enter", true);
+
 </pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
 html .paragraph .toggle-versioning-back-cardinal,
 html .paragraph .toggle-versioning-forward-tiny, 
