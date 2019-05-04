@@ -1,10 +1,12 @@
-<div class="section section-visible" data-id="RAAJuPq8" data-type="package" name="Activity Component" transient-focussed="true"><div class="paragraph body-paragraph collapsed" name="Documentation" data-id="8VmzkBNb"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
+<div class="section section-visible" data-id="RAAJuPq8" data-type="package" name="Activity Component"><div class="paragraph body-paragraph collapsed" name="Documentation" data-id="8VmzkBNb"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
 <div>Your description...</div></div></div><div class="paragraph data-paragraph" name="Properties" data-id="2qnziYCb"><pre data-type="content" type="application/json" class="section-properties">{
-  "version": "0.3.0",
+  "version": "0.4.0",
   "icon": "show_chart",
   "description": "Your short description.",
   "tags": [
-    "Your tags"
+    "vis",
+    "interface",
+    "navigation"
   ],
   "assets": [
     "moment.min.js",
@@ -12,6 +14,7 @@
     "d3.min.js"
   ],
   "changelog": {
+    "0.4.0": "vis interface for navigation is ready",
     "0.3.5": "ADDED: indexes for navigation",
     "0.3.0": "FIXED: styling",
     "0.2.0": "ADDED: interface for enabling components per chunk",
@@ -100,7 +103,7 @@ const options = {
 
 vm.addToGlobalContext({
   options
-});</pre></div><div class="paragraph code-paragraph" data-id="XZbmiC38" name="point-interval" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="point-interval">const vm = Codestrate.VirtualMachines.get("text/javascript");
+});</pre></div><div class="paragraph code-paragraph collapsed" data-id="XZbmiC38" name="point-interval" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="point-interval">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 class Point {
@@ -147,7 +150,7 @@ vm.addToGlobalContext({
   Point,
   Interval
 });
-</pre></div><div class="paragraph code-paragraph" data-id="4XsLZMub" last-execution-state="success" run-on-load="true" name="aggregation"><pre data-type="content" type="text/javascript" id="aggregation">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="4XsLZMub" last-execution-state="success" run-on-load="true" name="aggregation"><pre data-type="content" type="text/javascript" id="aggregation">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 /**
@@ -434,15 +437,12 @@ vm.addToGlobalContext({
 
 </pre></div><div class="paragraph code-paragraph collapsed" data-id="rCS8sqHQ" run-on-load="true" last-execution-state="success" name="draw-entries-reference"><pre data-type="content" type="text/javascript" id="draw-entries-reference">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
-
 importLib([
     "moment.min.js",
     "lodash.min.js",
     "d3.min.js"
 ]).then(() =&gt; {
     
-
-
     /**
      *
      * @param g
@@ -479,7 +479,13 @@ importLib([
                               .attr('class', `entry ${entry.className ? entry.className : 'entry--point--default'}`)
                               .attr('d', symbolGen.type(d3[entry.symbol] || d3['symbolCircle'])())
                               .attr('href', entry.link)
-                              .on('click', () =&gt; { console.log(entry)});
+                              .on('click', () =&gt; {
+                                  
+                                  console.log(entry)
+                                  var {operationalMode, artefactMode, visObjectIndex} = vm.context.navigatePrepareInputs(entry)
+				  vm.context.navigateVis(vm.context.paragraph, operationalMode, artefactMode, visObjectIndex)
+                                  
+                              });
                         
                     }
 
@@ -492,12 +498,16 @@ importLib([
                             const interval = g.append('path')
                                   .attr('class', `entry ${entry.className ? entry.className : 'entry--interval--default'}`)
                                   .attr('d', () =&gt; roundedRect(X, Y, W, H, intervalCornerRadius, true, true, true, true))
-                                  .on('click', () =&gt; { console.log(entry)});
+                                  .on('click', () =&gt; {
+                                      console.log(entry)
+                                      var {operationalMode, artefactMode, visObjectIndex} = vm.context.navigatePrepareInputs(entry)
+				      vm.context.navigateVis(vm.context.paragraph, operationalMode, artefactMode, visObjectIndex)
+                                  });
                             
                             // if (entry.title) {
-                                // interval
-                                // .on('mouseover', showTip(entry.title))
-                                // .on('mouseout', hideTip);
+                            // interval
+                            // .on('mouseover', showTip(entry.title))
+                            // .on('mouseout', hideTip);
                             // }
                             
                         } catch (err) {
@@ -606,8 +616,6 @@ importLib([
 
             g
                 .call(drawEntriesMultiLaneX, data, groups, xScale, yScale, symbolSize, intervalCornerRadius, roundedRect)
-            // .call(drawEntriesMultiLaneX, data, groups, xScale, yScale, symbolSize, intervalCornerRadius)
-            
                 .call(drawCurrentReferenceX, xScale, g_h, currentTimeLineColor, currentTimeLineWidth);
         }
     };
@@ -618,7 +626,8 @@ importLib([
         drawGen
     });
     
-})</pre></div><div class="paragraph code-paragraph collapsed" data-id="T9XWjRQf" run-on-load="true" last-execution-state="success" name="brush"><pre data-type="content" type="text/javascript" id="brush">const vm = Codestrate.VirtualMachines.get("text/javascript");
+})
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="T9XWjRQf" run-on-load="true" last-execution-state="success" name="brush"><pre data-type="content" type="text/javascript" id="brush">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 importLib([
