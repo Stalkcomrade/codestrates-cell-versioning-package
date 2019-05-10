@@ -1,5 +1,5 @@
 <div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
-	"version"    : "0.5.2.0",
+	"version"    : "0.5.3.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
 	"tags"       : [
@@ -19,6 +19,7 @@
   ],
 	"changelog":
 	{
+    "0.5.3.0" : "ADDED: code execution while in versioning mode",
     "0.5.2.0" : "FIXED: button-based navigation",
     "0.5.1.0" : "code refactoring",
     "0.5.0.0" : "data for activity component is prepared upon entering versioning mode",
@@ -2289,7 +2290,7 @@ importLib([
 
     }
 
-})</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: patching diff
+})</pre></div><div class="paragraph code-paragraph collapsed" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: patching diff
 // TODO: output
 // TODO: vistrate
 // SOLVED: get current element name
@@ -2311,25 +2312,17 @@ const getOps = (version) =&gt; {
         version;
     
     version = typeof version === "undefined" &amp;&amp; webstrate.version; // if version is not specified, get the whole history
-
-    webstrate.getOps(webstrate.version - version, webstrate.version, (x, y) =&gt; {
-        tsd = y;
-    });
+    webstrate.getOps(webstrate.version - version, webstrate.version, (x, y) =&gt; { tsd = y; });
 
     return new Promise((resolve, reject) =&gt; {
-
         const interval = setInterval(() =&gt; {
-
             if (!Array.isArray(tsd)) {} else {
                 clearInterval(interval)
                 resolve(tsd)
                 console.log("Resolved", tsd)
             }
         }, timeout);
-
-
     });
-
 };
 
 // helper function to create containers for elements
@@ -2343,7 +2336,7 @@ const recOps = (paragraph) =&gt; {
         id: el.id,
         path: el.toPath()
     }
-
+    
     return target;
 }
 
@@ -2539,13 +2532,13 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
    
 
     // TODO: inject to default, then to error/succes, then to contributor
-    if ((navigationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
-        (navigationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
-        // fixme" naviugational mide"
-        navigationalMode == "backward" ?
-            step = -1 :
-            step = +1
-    }
+    // if ((navigationalMode == "backward" &amp;&amp; vm.context.lastAppliedOp.forwardOp) ||
+    //     (navigationalMode == "forward" &amp;&amp; vm.context.lastAppliedOp.backwardOp)) {
+    //     // fixme" naviugational mide"
+    //     navigationalMode == "backward" ?
+    //         step = -1 :
+    //         step = +1
+    // }
 
     
     
@@ -2674,10 +2667,10 @@ const calculateOpsQuantity = async (opsStatePromise, opsLocal, currentIndex, nav
 
         closestOp = Array.isArray(closestOp) ? closestOp : [closestOp]
         navigationalMode == "backward"
-            ? opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex) -
+            ? opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == (vm.context.globalIndex)) -
             opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex)
             : opsQuantity = opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == closestOp[0].globalIndex) - 
-            opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == vm.context.globalIndex)
+            opsLcl[0].opsOb.findIndex(el =&gt; el.globalIndex == (vm.context.globalIndex))
         
     } else if (artefactMode == "default") {
         
@@ -2752,7 +2745,6 @@ const prepareExecutionStatesObject = async (opsStatePromise) =&gt; {
 
     // FIXME: change mechanism later - use i/o model instead fo global
     // vm.context.statesListforTimeline = statesList
-
     statesList = Array.isArray(statesList) ? statesList : [statesList]
     
     return statesList
@@ -2772,7 +2764,6 @@ const prepareExecutionStatesObject = async (opsStatePromise) =&gt; {
 const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMode) =&gt; {
 
     // I need to apply op to the transient pre instead of the original
-
     var rootTmp = document.querySelector("pre[versioning-id-to-remove='" +
         paragraph.getAttribute("name") + "']")
 
@@ -2780,18 +2771,18 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
     console.log("Applying Op to this element", rootTmp)
 
 
-    var opInst = await ops;
+    var opInst = await ops,
     // choose next op based on the current one to apply
     // index of opInst.opsOb is relative, absolute is used in UI (version)
     // derfor, filter opsOb and pass the proper absolute/relative indexes
     // TODO: try to use a linked list here
-    var opTry;
+        opTry,
 
     // first, find index within object of the current version
     // checking whether the next Op for code cell exists here
     // if not, rejecting promise
     // if it exists, I can apply op forward
-    var unIndex;
+        unIndex,
 
     // FIXME: overcomplicated structure
     // I am not changing any version here
@@ -2803,7 +2794,7 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
     // for keeping state
     // later, should rely either on cuex or DOM
 
-    var st,
+        st,
         duplVersion,
         unOp,
         changeDirectionInd = 0,
@@ -2834,13 +2825,10 @@ const processOpsAndApply = async (paragraph, ops, stateSelection, operationalMod
         updateFlag = true
 
     } else {
-
         unOp = opInst.opsOb[vm.context.currentIndex]
-
     }
 
     if (unOp == undefined) {
-
         console.log("No" + operationalMode + " operation to apply")
         return
     }
@@ -3036,6 +3024,8 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
     // meanwhile, when mode is entered, I should specify
     // that forward is not possible
 
+    // FIXME: assign 
+    vm.context.opsLog = [];
 
     var opsToReturn = [],
         opTry,
@@ -3118,7 +3108,13 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
                     // TODO: put into opsApplyMultiple and opsApply
                     if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined
                     try {
+                        var initState = rootTmp.innerText;
+                        
                         coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlk", rootTmp, opTry)
+
+                       
+                        vm.context.opsLog.push({initState: initState, opToApply: opTry, finalState: rootTmp.innerText})
+                        
                     } catch (error) {}
                     opsToReturn.push(opInst.opsOb[i])
 
@@ -3192,7 +3188,11 @@ const processOpsAndApplyMultiple = async (paragraph, ops, stateSelection, operat
                     // TODO: put into opsApplyMultiple and opsApply
                     if (vm.context.lastArtefactNavigation != "error") vm.context.errorState = undefined
                     try {
+                        var initState = rootTmp.innerText;
+                        
                         coreWsClientModule.coreEventsModule.triggerEvent("receivedOpsStlkForward", rootTmp, opTry)
+                        
+                        vm.context.opsLog.push({initState: initState, opToApply: opTry, finalState: rootTmp.innerText})
                     } catch (error) {}
                     opsToReturn.push(opInst.opsOb[i])
                 }
@@ -3375,10 +3375,179 @@ exports = Object.assign(exports, {
 })
 
 
+</pre></div><div class="paragraph code-paragraph" data-id="6ddKWHX9" name="execution-action-update" last-execution-state="success"><pre data-type="content" type="text/javascript" id="execution-action-update">// TODO: unbind action from button
+
+const ParagraphUtils = require("#paragraph-utils"),
+      runOnLoadAttributeName = "run-on-load";
+
+
+// const addExecuteAction = (paragraph, whichFun) =&gt; {
+
+    // var actionElement = paragraph.querySelector("div.action.execute-paragraph")
+    
+    // // codestrate.runCodeTransient(paragraph)
+    // whichFun == "default"
+    //     ? actionElement.addEventListener("click", codestrate.runCode(paragraph))
+    //     : actionElement.addEventListener("click", codestrate.runCodeTransient(paragraph))
+    
+// };
+
+// modified for transient
+
+codestrate.runCodeTransient = (paragraph, exports) =&gt; {
+
+    console.log("Inside run code transient")
+
+    // Block execution of consecutive code paragraphs until this paragraph executed completely after
+    // importing all libs or requiring other code paragraphs.
+    let blockHandle = codestrate.blockExecution("codestrate.runCode");
+
+    // changes selector
+    const codeSelector = '[data-type="content"]';
+    
+    debugger;
+    
+    const element = document.querySelector("pre[versioning-id-to-remove='" +
+                                           paragraph.getAttribute("name") + "']" )
+
+    if (!element) {
+        throw new Error(`Could not find ${codeSelector} in paragraph`);
+    }
+
+    const codeType = element.getAttribute("type");
+    if (!codeType) {
+        throw new Error(`Could not find type attribute on ${element}`);
+    }
+
+    var code = element.innerText;
+
+    codestrate.dispatchEvent("beforeruncode", {
+        paragraph: paragraph,
+        code: code
+    });
+
+    let codeSource = paragraph.getAttribute("id") ||
+        (paragraph.getAttribute("name") &amp;&amp; paragraph.getAttribute("name").replace(/\W/g, "_")) ||
+        `VM${codestrate.util.randomString()}`;
+
+    try {
+        const vm = codestrate.VirtualMachines.get(codeType);
+
+        const context = vm.getExecutionContext({
+            paragraph,
+            codeSource,
+            exports
+        });
+
+        context.execute(code);
+
+        codestrate.dispatchEvent("successruncode", {
+            paragraph: paragraph,
+            code: code
+        });
+    } catch (error) {
+
+        codestrate.dispatchEvent("errorruncode", {
+            error: error,
+            paragraph: paragraph,
+            code: code
+        });
+    }
+
+    codestrate.dispatchEvent("afterruncode", {
+        paragraph: paragraph,
+        code: code
+    });
+
+    // Release block handle
+    blockHandle.continue();
+};
+
+
+
+// original function
+codestrate.runCode = (paragraph, exports) =&gt; {
+
+    // Block execution of consecutive code paragraphs until this paragraph executed completely after
+    // importing all libs or requiring other code paragraphs.
+    let blockHandle = codestrate.blockExecution("codestrate.runCode");
+
+    const codeSelector = '[data-type="content"]';
+    const element = paragraph.querySelector(codeSelector);
+
+    if (!element) {
+        throw new Error(`Could not find ${codeSelector} in paragraph`);
+    }
+
+    const codeType = element.getAttribute("type");
+    if (!codeType) {
+        throw new Error(`Could not find type attribute on ${element}`);
+    }
+
+    var code = element.innerText;
+
+    codestrate.dispatchEvent("beforeruncode", {
+        paragraph: paragraph,
+        code: code
+    });
+
+    let codeSource = paragraph.getAttribute("id") ||
+        (paragraph.getAttribute("name") &amp;&amp; paragraph.getAttribute("name").replace(/\W/g, "_")) ||
+        `VM${codestrate.util.randomString()}`;
+
+    try {
+        const vm = codestrate.VirtualMachines.get(codeType);
+
+        const context = vm.getExecutionContext({
+            paragraph,
+            codeSource,
+            exports
+        });
+
+        context.execute(code);
+
+        codestrate.dispatchEvent("successruncode", {
+            paragraph: paragraph,
+            code: code
+        });
+    } catch (error) {
+
+        codestrate.dispatchEvent("errorruncode", {
+            error: error,
+            paragraph: paragraph,
+            code: code
+        });
+    }
+
+    codestrate.dispatchEvent("afterruncode", {
+        paragraph: paragraph,
+        code: code
+    });
+
+    // Release block handle
+    blockHandle.continue();
+};
+
+// update execute action if quiting mode
+// call and pass argument from enter mode function
+exports.updateExecutionAction = (paragraph, whichFun) =&gt; {
+
+    // workaround to get rid of the old event listeners
+    var oldElement = paragraph.querySelector("div.action.execute-paragraph")
+    var newElement = oldElement.cloneNode(true);
+
+    oldElement.parentNode.replaceChild(newElement, oldElement);
+    
+    whichFun == "default"
+        ? newElement.addEventListener("click", () =&gt; {codestrate.runCode(paragraph)})
+        : newElement.addEventListener("click", () =&gt; {codestrate.runCodeTransient(paragraph)})
+
+}
 </pre></div><div class="paragraph code-paragraph" data-id="3widdW9p" name="Versioning Utils" last-execution-state="success" style="" draggable="false" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-utils">const opsUtils = require("#opsUtils"),
       ParagraphUtils = require("#paragraph-utils"),
       coreWsClientModule = require("#coreWebstratesClientAPI"),
       opsProcessTimeline = require("#opsProcessTimeline"), // FIXME: temporary, remove later
+      execution = require("#execution-action-update"),
       vm = Codestrate.VirtualMachines.get("text/javascript");
 
 // TODO: memorising last successfull artefact mode,
@@ -3709,9 +3878,11 @@ const enterVersioningMode = async (pg) =&gt; {
         : document.getElementById("save-container-" + pg.getAttribute).innerText
     
     
-    
+     
     if (pg.getElementsByClassName("toggle-versioning-mode")[0]
         .getAttribute("class").indexOf("v-active") &gt; -1) { // exit mode
+      
+      
         
         vm.context.paragraph = null
         vm.context.enteredMode = false // used to not allow the first forward op to be applied
@@ -3742,8 +3913,13 @@ const enterVersioningMode = async (pg) =&gt; {
       	    console.log("Exit Versioning Mode")
             
         }      	 
+      
+      // updating exectuion action back to normal
+      	execution.updateExecutionAction(pg, "default")
         
     } else { // enter mode
+      
+       
         
         // fetching ops history to retrive ops per paragraph 
         var meta = await opsUtils.mainWrapper(pg);
@@ -3806,6 +3982,9 @@ const enterVersioningMode = async (pg) =&gt; {
       	    console.log("Updated Editor")
             
         }
+      
+      // updating exectuion action
+      	execution.updateExecutionAction(pg, "update")
         
     }
 
@@ -3814,7 +3993,7 @@ const enterVersioningMode = async (pg) =&gt; {
 
 exports = Object.assign(exports, {toggleArtefact, toggleDefaultNavigation,
                                   enterVersioningMode, changeNavigationArtefact})
-</pre></div><div class="paragraph code-paragraph" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">const VersioningUtils = require("#versioning-utils");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="Cqhpj3an" name="Versioning UI" last-execution-state="success" run-on-load="true"><pre data-type="content" type="text/javascript" id="versioning-ui">const VersioningUtils = require("#versioning-utils");
 
 // Bindings for artefact navigation should only work 
 // for buttons named "cardinal", when the mode changes
@@ -3867,27 +4046,6 @@ importLib([
 	    return;
 	}
 
-        // Back tiny
-	let actionBackTiny = document.createElement("div");
-	actionBackTiny.classList.add("action");
-	actionBackTiny.classList.add("toggle-versioning-back-tiny");
-	actionBackTiny.setAttribute("tooltip", "true");
-	
-	let iconBackTiny = document.createElement("i");
-	iconBackTiny.classList.add("material-icons");
-	actionBackTiny.appendChild(iconBackTiny);
-	header.appendChild(actionBackTiny);
-
-        // Back cardinal
-	let actionBackCardinal = document.createElement("div");
-	actionBackCardinal.classList.add("action");
-	actionBackCardinal.classList.add("toggle-versioning-back-cardinal");
-	actionBackCardinal.setAttribute("tooltip", "true");
-	
-	let iconBackCardinal = document.createElement("i");
-	iconBackCardinal.classList.add("material-icons");
-	actionBackCardinal.appendChild(iconBackCardinal);
-	header.appendChild(actionBackCardinal);
 
         // Forward Tiny
 	let actionForwardTiny = document.createElement("div");
@@ -3910,6 +4068,28 @@ importLib([
 	iconForwardCardinal.classList.add("material-icons");
 	actionForwardCardinal.appendChild(iconForwardCardinal);
 	header.appendChild(actionForwardCardinal);
+      
+            // Back tiny
+	let actionBackTiny = document.createElement("div");
+	actionBackTiny.classList.add("action");
+	actionBackTiny.classList.add("toggle-versioning-back-tiny");
+	actionBackTiny.setAttribute("tooltip", "true");
+	
+	let iconBackTiny = document.createElement("i");
+	iconBackTiny.classList.add("material-icons");
+	actionBackTiny.appendChild(iconBackTiny);
+	header.appendChild(actionBackTiny);
+
+        // Back cardinal
+	let actionBackCardinal = document.createElement("div");
+	actionBackCardinal.classList.add("action");
+	actionBackCardinal.classList.add("toggle-versioning-back-cardinal");
+	actionBackCardinal.setAttribute("tooltip", "true");
+	
+	let iconBackCardinal = document.createElement("i");
+	iconBackCardinal.classList.add("material-icons");
+	actionBackCardinal.appendChild(iconBackCardinal);
+	header.appendChild(actionBackCardinal);
         
         // change artefact for navigation
         
@@ -4078,7 +4258,7 @@ importLib([
 
 codestrate.addKeyBinding("codestrate.runCode", "ctrl+shift+enter", true);
 
-</pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="Paragraph&nbsp;"><style data-type="content" type="text/css">html .paragraph .toggle-versioning-back-tiny,
+</pre></div><div class="paragraph style-paragraph collapsed" data-id="CqSgXhhJ" name="versioning-ui-style"><style data-type="content" type="text/css" id="versioning-ui-style">html .paragraph .toggle-versioning-back-tiny,
 html .paragraph .toggle-versioning-back-cardinal,
 html .paragraph .toggle-versioning-forward-tiny, 
 html .paragraph .toggle-versioning-forward-cardinal,
@@ -4130,19 +4310,19 @@ html .paragraph .toggle-versioning-mode i:after {
 }
 
 
+/* new */
 html .paragraph .toggle-versioning-back-tiny i:after {
-	content: "keyboard_arrow_right";
-}
-
-html .paragraph .toggle-versioning-back-cardinal i:after {
-	content: "fast_forward";
-}
-
-html .paragraph .toggle-versioning-forward-tiny i:after {
 	content: "keyboard_arrow_left";
 }
 
-html .paragraph .toggle-versioning-forward-cardinal i:after {
+html .paragraph .toggle-versioning-back-cardinal i:after {
 	content: "fast_rewind";
 }
-</style></div></div>
+
+html .paragraph .toggle-versioning-forward-tiny i:after {
+	content: "keyboard_arrow_right";
+}
+
+html .paragraph .toggle-versioning-forward-cardinal i:after {
+	content: "fast_forward";
+}</style></div></div>
