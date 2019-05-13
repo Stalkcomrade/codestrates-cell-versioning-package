@@ -1,6 +1,6 @@
-<div class="section section-visible" data-id="RAAJuPq8" data-type="package" name="Activity Component"><div class="paragraph body-paragraph collapsed" name="Documentation" data-id="8VmzkBNb"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
+<div class="section section-visible" data-id="RAAJuPq8" data-type="package" name="Activity Component"><div class="paragraph body-paragraph" name="Documentation" data-id="8VmzkBNb"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"><h2>Description</h2>
 <div>Your description...</div></div></div><div class="paragraph data-paragraph" name="Properties" data-id="2qnziYCb"><pre data-type="content" type="application/json" class="section-properties">{
-  "version": "0.4.0",
+  "version": "0.4.5",
   "icon": "show_chart",
   "description": "Your short description.",
   "tags": [
@@ -14,6 +14,7 @@
     "d3.min.js"
   ],
   "changelog": {
+    "0.4.5": "FIXED: filters 1-op sesssion, timeline is rendered correctly",
     "0.4.0": "vis interface for navigation is ready",
     "0.3.5": "ADDED: indexes for navigation",
     "0.3.0": "FIXED: styling",
