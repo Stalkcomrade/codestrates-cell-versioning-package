@@ -1,4 +1,4 @@
-<div class="section section-visible" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
+<div class="section section-visible collapsed" data-id="USFYpDV9" name="versioning package" data-type="package" transient-focussed="true"><div class="paragraph body-paragraph" data-id="CiC6ZNKJ" name="Documentation"><div data-type="content" type="text/html" contenteditable="true" class="section-documentation"></div></div><div class="paragraph data-paragraph" data-id="NKRfAA7M" name="Properties"><pre data-type="content" type="application/json" class="section-properties">{
 	"version"    : "0.6.0.0",
 	"icon"       : "change_history",
 	"description": "a wrapper for core Webstrates api to enable local versioning for code chunks in Codestrates.",
@@ -2192,7 +2192,7 @@ coreEvents.addEventListener('receivedOpsStlk', (rootElement, ops) =&gt; {
 
 
 exports = Object.assign(exports, {coreEventsModule, PathTree})
-</pre></div><div class="paragraph code-paragraph" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="Qr3KyE3e" name="opsProcessTimeline" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsProcessTimeline">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 importLib([
     "lodash.min.js",
@@ -2301,7 +2301,7 @@ importLib([
     }
 
 })
-</pre></div><div class="paragraph code-paragraph" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: patching diff
+</pre></div><div class="paragraph code-paragraph collapsed" data-id="uuwCK9Nh" name="opsUtils" last-execution-state="success"><pre data-type="content" type="text/javascript" id="opsUtils">// TODO: patching diff
 // TODO: output
 // TODO: vistrate
 // SOLVED: get current element name
