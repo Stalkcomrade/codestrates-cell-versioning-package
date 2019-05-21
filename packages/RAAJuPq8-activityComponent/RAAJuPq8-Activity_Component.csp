@@ -69,18 +69,18 @@ vm.addToGlobalContext({
 
   
   
-})</pre></div><div class="paragraph code-paragraph collapsed" data-id="FzYWHuz8" name="options" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="options">const vm = Codestrate.VirtualMachines.get("text/javascript");
+})</pre></div><div class="paragraph code-paragraph" data-id="FzYWHuz8" name="options" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="options">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 const options = { 
                         intervalCornerRadius: 4,
-                        symbolSize: 400,
+                        symbolSize: 100,
                         groupLabelFontSize: 12,
                         groupLabelFontWeight: 400,
                         groupLabelFontOpacity: 1,
                         groupLaneWidth: 200, // INFO: changes grouping width
                         tickSize: 20,
                         tickPadding: 8,
-                        axisXLaneHeight: 600, // changes the height of groupping
+                        axisXLaneHeight: 40,// 600, // changes the height of groupping
                         axisFontSize: 16,
                         axisFontWeight: 600,
                         axisFontOpacity: 0.5,
@@ -104,7 +104,7 @@ const options = {
 
 vm.addToGlobalContext({
   options
-});</pre></div><div class="paragraph code-paragraph collapsed" data-id="XZbmiC38" name="point-interval" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="point-interval">const vm = Codestrate.VirtualMachines.get("text/javascript");
+});</pre></div><div class="paragraph code-paragraph" data-id="XZbmiC38" name="point-interval" run-on-load="true" last-execution-state="success"><pre data-type="content" type="text/javascript" id="point-interval">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 class Point {
@@ -151,7 +151,7 @@ vm.addToGlobalContext({
   Point,
   Interval
 });
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="4XsLZMub" last-execution-state="success" run-on-load="true" name="aggregation"><pre data-type="content" type="text/javascript" id="aggregation">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph" data-id="4XsLZMub" last-execution-state="success" run-on-load="true" name="aggregation"><pre data-type="content" type="text/javascript" id="aggregation">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 /**
@@ -436,7 +436,7 @@ vm.addToGlobalContext({
     roundedRect
 });
 
-</pre></div><div class="paragraph code-paragraph collapsed" data-id="rCS8sqHQ" run-on-load="true" last-execution-state="success" name="draw-entries-reference"><pre data-type="content" type="text/javascript" id="draw-entries-reference">const vm = Codestrate.VirtualMachines.get("text/javascript");
+</pre></div><div class="paragraph code-paragraph" data-id="rCS8sqHQ" run-on-load="true" last-execution-state="success" name="draw-entries-reference"><pre data-type="content" type="text/javascript" id="draw-entries-reference">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 importLib([
     "moment.min.js",
@@ -983,7 +983,7 @@ vm.addToGlobalContext({
   brushY
 });
   
-})</pre></div><div class="paragraph code-paragraph collapsed" data-id="XZWEtxcB" run-on-load="true" last-execution-state="success" name="zoom"><pre data-type="content" type="text/javascript" id="zoom">const vm = Codestrate.VirtualMachines.get("text/javascript");
+})</pre></div><div class="paragraph code-paragraph" data-id="XZWEtxcB" run-on-load="true" last-execution-state="success" name="zoom"><pre data-type="content" type="text/javascript" id="zoom">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 
 importLib([
@@ -1039,7 +1039,7 @@ vm.addToGlobalContext({
   disableZoomOn
 });
   
-})</pre></div><div class="paragraph code-paragraph collapsed" data-id="B9ubdjZB" run-on-load="true" last-execution-state="success" name="timeline-chart"><pre data-type="content" type="text/javascript" id="timeline-chart">const vm = Codestrate.VirtualMachines.get("text/javascript");
+})</pre></div><div class="paragraph code-paragraph" data-id="B9ubdjZB" run-on-load="true" last-execution-state="success" name="timeline-chart"><pre data-type="content" type="text/javascript" id="timeline-chart">const vm = Codestrate.VirtualMachines.get("text/javascript");
 
 importLib([
     "moment.min.js",
@@ -1054,7 +1054,7 @@ importLib([
             // this.selectPaddingInnerOuterY = selectPaddingInnerOuterY
             Object.assign(this, roundedRect)
             this.margin = {left: 100, top: 100, right: 50, bottom: 250}
-            this.size = [1000, 1000]
+            this.size = [1000, screen.height * 0.4]
             this.data = {
                 scale: null,
                 timer: null,
@@ -1092,10 +1092,16 @@ importLib([
             
             const self = this
             
-            const { left = 0, top = 0, right = 0, bottom = 0 } = this.margin,
+            const { left = 0, top = 0, right = 0, bottom = 0 } = this.margin;
                   // [w, h] = this.getElWidthHeight(),
-                  [w, h] = this.size,
-                  __offset__  = this.borderWidth,
+                  var [w, h] = this.size;
+          
+                  // h = document.getElementById('appTemplate').getBoundingClientRect().height
+          				// debugger;
+          				// h = screen.height*0.3
+          				console.log("height", h)
+          
+                  const __offset__  = this.borderWidth,
                   g_w = w - left - right - this.groupLaneWidth - 2 * __offset__,
                   g_h = h - top - bottom - this.axisXLaneHeight - this.axisXLabelLaneHeight - 2 * __offset__,
                   entryClipPathId = uuid(), groupLabelClipPathId = uuid()
@@ -1108,10 +1114,22 @@ importLib([
             
             const groupHeight = g_h / groups.length,
                   [paddingInner, paddingOuter] = selectPaddingInnerOuterY(groupHeight);
+          
+          // TODO: new responsive
+            const mainDiv = d3.create("div")
+   					 .classed("svg-container", true) //container class to make it responsive
+   					 
+            const svg = mainDiv.append("svg")
+   					//responsive SVG needs these 2 attributes and no width and height attr
+   					.attr("preserveAspectRatio", "xMinYMin meet")
+   					.attr("viewBox", "0  0 " + w + " " + h)
+   					//class to make it responsive
+   					.classed("svg-content-responsive", true); 
             
-            const svg = d3.create("svg")
-                  .attr('width', w)
-                  .attr('height', h);
+          // FIXME: old option
+            // const svg = d3.create("svg")
+//                  .attr('width', w)
+  //                .attr('height', h);
             
             self.svg = svg;
             
@@ -1296,7 +1314,14 @@ importLib([
             
             svg.attr("id", "timeline-svg")
             
-            return svg
+          // FIXME: old way
+            // return svg
+          
+          
+          // FIXME:  new way
+          return mainDiv
+          //d3.select("div#chartId")
+  					 
 
             // Observable style
             // return {svg: svg.node(), inspect: inspect}
@@ -1596,15 +1621,15 @@ importLib([
     cursor: pointer;
 }
 #timeline-svg .entry--point--warn {
-    fill: #ffdd57;;
-    stroke: #ffdd57;
+    fill: #FF0000;;
+    stroke: #FF0000;
     stroke-opacity: 1;
     cursor: pointer;
 }
 
 
 
-</style></div><div class="paragraph style-paragraph collapsed" data-id="PtP4e7yu" name="vis-components-sidebar-style"><style data-type="content" type="text/css" id="vis-components-sidebar-style">body[transient-sidebar] #sidebarVisContainer {
+</style></div><div class="paragraph style-paragraph" data-id="PtP4e7yu" name="vis-components-sidebar-style"><style data-type="content" type="text/css" id="vis-components-sidebar-style">body[transient-sidebar] #sidebarVisContainer {
     position: fixed;
     right: 0%;
     top: 75%;
@@ -1638,18 +1663,20 @@ svg foreignObject > .viewContainer .visview {
     /* 	height: 100%; */
 }
 
-
-
-#timeline-svg {
-    /* width: 50 !important;     */
-    /* height: 100 !important;     */
-    /* transform: translate(750px, -90px) */
+.svg-container {
+    display: inline-block;
+  	transform: translate(0%, -9%);
+    position: relative;
+    width: 100%;
+    padding-bottom: 100%; /*aspect ratio */
+    vertical-align: top;
+    overflow: hidden;
 }
-
-#timeline-svg > * {
-    /* transform: translate("30px", "-50px"); */
-}
-</style></div><div class="paragraph style-paragraph collapsed" data-id="usFFzU59" name="vis-components-ui-style"><style data-type="content" type="text/css" id="vis-components-ui-style">
+.svg-content-responsive {
+  	
+    display: inline-block;
+    position: absolute;
+}</style></div><div class="paragraph style-paragraph collapsed" data-id="usFFzU59" name="vis-components-ui-style"><style data-type="content" type="text/css" id="vis-components-ui-style">
 html .paragraph .toggle-timeline {
     margin-left: 0px;
     margin-right: 0px;
